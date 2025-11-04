@@ -1,0 +1,102 @@
+```plantuml
+@startuml domain_model
+Title Обратная связь AlfaBook
+skinparam WrapWidth 150
+
+' Пользователи
+class "Пользователь" as user {{
+    + {{field}} id: UUID
+    + {{field}} имя: String
+}}
+class "Редактор" as editor {{}}
+editor --|> user
+
+' Доменные сущности
+entity "Статья" as article {{
+    + {{field}} id: UUID
+    + {{field}} заголовок: String
+    + {{field}} ссылка: String
+}}
+entity "Вопрос" as question {{
+    + {{field}} id: UUID
+    + {{field}} текстHtml: String
+    + {{field}} статус: СтатусВопроса
+    + {{field}} датаСоздания: DateTime
+}}
+entity "Вложение" as attachment {{
+    + {{field}} id: UUID
+    + {{field}} имяФайла: String
+    + {{field}} тип: ТипВложения
+    + {{field}} размерБайт: Long
+    + {{field}} url: String
+}}
+
+' Справочники (перечисления)
+class "СтатусВопроса" as questionStatus {{}}
+class "ТипВложения" as attachmentType {{}}
+
+' GUI элементы
+class "Страница статьи" as articlePage << (U, #d310e4) GUI >> {{
+    + {{method}} открыть()
+    + {{method}} нажатьОбратнаяСвязь()
+}}
+class "Модальное окно обратной связи" as feedbackModal << (U, #d310e4) GUI >> {{
+    + {{field}} максФайлов: Int = 10
+    + {{field}} допустимыеТипы: String = "PDF,DOC,DOCX"
+    + {{field}} максРазмерМб: Int = 10
+    + {{field}} текстОбязателен: Boolean = true
+    + {{method}} открыть()
+    + {{method}} ввестиТекст()
+    + {{method}} прикрепитьФайл()
+    + {{method}} отправить()
+    + {{method}} отменить()
+    + {{method}} закрыть()
+    + {{method}} обновитьДоступностьПрикрепления()
+}}
+class "Личный кабинет: Мои вопросы" as myQuestions << (U, #d310e4) GUI >> {{
+    + {{method}} отобразитьСписокВопросов()
+    + {{method}} открытьВопрос()
+}}
+class "Модальное окно просмотра вопроса" as viewModal << (U, #d310e4) GUI >> {{
+    + {{method}} открыть()
+    + {{method}} показатьФорматированныйТекст()
+    + {{method}} показатьВложения()
+}}
+class "Центр администрирования: Обратная связь" as adminCenter << (U, #d310e4) GUI >> {{
+    + {{method}} отобразитьСписокВопросов()
+}}
+
+' Отношения использования
+user ..> articlePage : использование
+user ..> feedbackModal : использование
+user ..> myQuestions : использование
+user ..> viewModal : использование
+editor ..> adminCenter : использование
+
+' Отношения между GUI
+articlePage *-- feedbackModal : открывает
+myQuestions *-- viewModal : открывает
+
+' Связи домена
+feedbackModal -- question : создает
+question "1" *-- "0..10" attachment : вложения
+myQuestions -- question : отображает
+viewModal -- question : показывает
+adminCenter -- question : отображает
+user "1" -- "0..*" question : автор
+article "1" -- "0..*" question : относится к
+
+' Ограничения домена:
+' - Вопрос.текстHtml: NOT NULL, NOT BLANK
+' - СтатусВопроса ∈ {Новый, Отправлен, На_рассмотрении, Отвечен, Закрыт}
+' - ТипВложения ∈ {PDF, DOC, DOCX}
+' - Вложение.размерБайт ≤ 10*1024*1024
+
+' Ограничения UI:
+' - Прикрепляется один файл за раз
+' - Кнопка "Прикрепить файл" недоступна при 10 вложениях
+' - Текст вопроса обязателен
+
+' Оценка сложности: N=12, C=4096
+@enduml
+```

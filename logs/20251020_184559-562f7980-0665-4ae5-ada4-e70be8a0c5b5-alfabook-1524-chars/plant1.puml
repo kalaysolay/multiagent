@@ -1,0 +1,83 @@
+@startuml domain_model
+Title Обратная связь по статье AlfaBook
+skinparam WrapWidth 150
+
+' Классы и сущности
+class "Пользователь" as user {{}}
+class "Редактор" as editor {{}}
+entity "Статья" as article {{
+    + {{field}} id: UUID
+    + {{field}} заголовок: String
+}}
+entity "Вопрос" as question {{
+    + {{field}} id: UUID
+    + {{field}} текст: String
+    + {{field}} htmlТекст: String
+    + {{field}} статус: String
+    + {{field}} датаСоздания: DateTime
+}}
+entity "Файл" as file {{
+    + {{field}} id: UUID
+    + {{field}} имяФайла: String
+    + {{field}} размерМб: Decimal
+    + {{field}} тип: String
+}}
+
+' GUI-элементы
+class "Форма обратной связи" as feedbackModal << (U, #d310e4) GUI >> {{
+    + {{field}} maxAttachments: Int
+    + {{field}} maxFileSizeMb: Int
+    + {{field}} allowedTypes: String
+    + {{field}} attachedCount: Int
+    + {{method}} открыть()
+    + {{method}} ввестиТекст()
+    + {{method}} прикрепитьФайл()
+    + {{method}} удалитьФайл()
+    + {{method}} обновитьДоступностьКнопки()
+    + {{method}} отправить()
+    + {{method}} отменить()
+    + {{method}} закрыть()
+}}
+class "Поле комментария" as commentField << (U, #d310e4) GUI >> {{
+    + {{field}} обязательно: Bool
+    + {{method}} ввестиТекст()
+}}
+class "Визуальный редактор" as richEditor << (U, #d310e4) GUI >> {{
+    + {{method}} применитьФорматирование()
+}}
+class "Кнопка «Прикрепить файл»" as attachButton << (U, #d310e4) GUI >> {{
+    + {{field}} disabled: Bool
+    + {{method}} нажать()
+}}
+class "Мои вопросы (Личный кабинет)" as myQuestions << (U, #d310e4) GUI >> {{
+    + {{method}} открытьВопрос()
+}}
+class "Просмотр вопроса" as viewQuestionModal << (U, #d310e4) GUI >> {{
+    + {{method}} открыть()
+}}
+class "Админ: Обратная связь" as adminFeedback << (U, #d310e4) GUI >> {{
+    + {{method}} просмотретьВопросы()
+}}
+
+' Отношения
+editor --|> user
+user "1" -- "0..*" article : просматривает
+user ..> feedbackModal : нажать «Обратная связь»
+feedbackModal *-- commentField
+commentField *-- richEditor
+feedbackModal *-- attachButton
+feedbackModal -- question : создать при отправке
+question "1" *-- "0..10" file : вложения
+user ..> myQuestions
+myQuestions -- question
+myQuestions -- viewQuestionModal
+viewQuestionModal -- question
+editor ..> adminFeedback
+adminFeedback -- question
+
+' Ограничения:
+' - Прикрепление: по одному файлу за раз; максимум 10 вложений.
+' - Допустимые типы: PDF, DOC, DOCX; размер файла <= 10 МБ.
+' - Текст комментария обязателен; кнопка прикрепления недоступна при 10 вложениях.
+' Сложность: N=12, C=4096.
+@enduml

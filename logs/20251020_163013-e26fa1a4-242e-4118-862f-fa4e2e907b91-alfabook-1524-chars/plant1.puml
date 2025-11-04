@@ -1,0 +1,85 @@
+@startuml domain_model
+Title Обратная связь AlfaBook
+skinparam WrapWidth 150
+
+' Пользователи
+class "Пользователь" as user {{
+    + {{field}} id: UUID
+    + {{field}} имя: String
+}}
+class "Редактор" as editor {{}}
+editor --|> user
+
+' Доменные сущности
+entity "Вопрос" as question {{
+    + {{field}} id: UUID
+    + {{field}} текст: String
+    + {{field}} форматированныйТекст: String
+    + {{field}} статус: String
+    + {{field}} датаСоздания: DateTime
+}}
+entity "Вложение" as attachment {{
+    + {{field}} id: UUID
+    + {{field}} имяФайла: String
+    + {{field}} тип: String
+    + {{field}} размерМб: Int
+}}
+
+' GUI элементы
+class "Страница статьи" as articlePage << (U, #d310e4) GUI >> {{
+    + {{method}} открыть()
+    + {{method}} нажатьОбратнаяСвязь()
+}}
+class "Модальное окно обратной связи" as feedbackModal << (U, #d310e4) GUI >> {{
+    + {{field}} максФайлов: Int = 10
+    + {{field}} допустимыеТипы: String = "PDF,DOC,DOCX"
+    + {{field}} максРазмерМб: Int = 10
+    + {{field}} текстОбязателен: Boolean = true
+    + {{method}} открыть()
+    + {{method}} ввестиТекст()
+    + {{method}} прикрепитьФайл()
+    + {{method}} отправить()
+    + {{method}} отменить()
+    + {{method}} закрыть()
+    + {{method}} обновитьДоступностьПрикрепления()
+}}
+class "Личный кабинет: Мои вопросы" as myQuestions << (U, #d310e4) GUI >> {{
+    + {{method}} отобразитьСписокВопросов()
+    + {{method}} открытьВопрос()
+}}
+class "Модальное окно просмотра вопроса" as viewModal << (U, #d310e4) GUI >> {{
+    + {{method}} открыть()
+    + {{method}} показатьФорматированныйТекст()
+    + {{method}} показатьВложения()
+}}
+class "Центр администрирования: Обратная связь" as adminCenter << (U, #d310e4) GUI >> {{
+    + {{method}} отобразитьСписокВопросов()
+}}
+
+' Отношения использования
+user ..> articlePage : использование
+user ..> feedbackModal : использование
+user ..> myQuestions : использование
+user ..> viewModal : использование
+editor ..> adminCenter : использование
+
+' Отношения между GUI
+articlePage *-- feedbackModal : открывает
+myQuestions *-- viewModal : открывает
+
+' Связи домена
+feedbackModal -- question : создает
+question "1" *-- "0..10" attachment : вложения
+myQuestions -- question : отображает
+viewModal -- question : показывает
+adminCenter -- question : отображает
+
+' Ограничения:
+' - Прикрепляется один файл за раз
+' - Кнопка "Прикрепить файл" недоступна при 10 вложениях
+' - Допустимые типы: PDF, DOC, DOCX
+' - Максимальный размер одного файла: 10 МБ
+' - Текст вопроса обязателен
+
+' Оценка сложности: N=9, C=512
+@enduml

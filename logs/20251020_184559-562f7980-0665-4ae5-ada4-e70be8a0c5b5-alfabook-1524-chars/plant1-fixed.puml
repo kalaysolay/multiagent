@@ -1,0 +1,53 @@
+@startuml domain_model
+Title Обратная связь по статье AlfaBook
+skinparam WrapWidth 150
+
+' Доменные классы и сущности
+class "Пользователь" as user {{
+    + {{field}} id: UUID
+}}
+class "Редактор" as editor {{}}
+entity "Статья" as article {{
+    + {{field}} id: UUID
+    + {{field}} заголовок: String
+}}
+entity "Вопрос" as question {{
+    + {{field}} id: UUID
+    + {{field}} текст: String
+    + {{field}} htmlТекст: String
+    + {{field}} статус: СтатусВопроса
+    + {{field}} датаСоздания: DateTime
+}}
+entity "Файл" as file {{
+    + {{field}} id: UUID
+    + {{field}} имяФайла: String
+    + {{field}} размерБайт: Long
+    + {{field}} тип: ТипФайла
+}}
+
+' Типы (перечисления – фиксированные множества значений)
+class "СтатусВопроса" as questionStatus {{
+    ' Допустимые значения: Новый, В_обработке, Отвечен, Закрыт
+}}
+class "ТипФайла" as fileType {{
+    ' Допустимые значения: PDF, DOC, DOCX
+}}
+
+' Отношения
+editor --|> user
+user "1" -- "0..*" question : автор
+question "0..*" -- "1" article : относится к
+question "1" *-- "0..10" file : вложения
+question -- questionStatus : статус
+file -- fileType : тип
+
+' Доменные ограничения:
+' - Вопрос.текст: NOT NULL, длина > 0 (текст обязателен для отправки).
+' - Вопрос.статус: default = Новый.
+' - Вопрос имеет 0..10 вложений (ограничение на уровне домена).
+' - Файл принадлежит ровно одному Вопросу (композиция).
+' - Файл.тип ∈ {PDF, DOC, DOCX}.
+' - Файл.размерБайт ≤ 10 МБ.
+
+' Сложность: N=0, C=1.
+@enduml
