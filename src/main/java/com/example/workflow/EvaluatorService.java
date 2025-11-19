@@ -23,19 +23,16 @@ public class EvaluatorService {
 
     public List<Issue> evaluatePlantUml(String narrative, String plantUml) {
         String prompt = String.format("""
-Ты — ревьюер ICONIX. Проверь соответствие доменной модели нарративу.
+Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
 Верни JSON-массив объектов {{id, title, severity, suggestion}}.
 Правила:
-- Критика по полноте субъектов/объектов, атрибутам, связям и кратностям.
+- Указывай проблемы неполноты, неоднозначности, противоречий, отсутствующих бизнес-правил.
 - severity ∈ {{LOW, MEDIUM, HIGH}}.
-- suggestion — конкретное действие (например: "добавить связь Order - Customer 1..*").
+- suggestion — конкретное действие, которое улучшит нарратив.
 
 Нарратив:
 %s
-
-PlantUML:
-%s
-""", narrative, plantUml);
+""", narrative);
 
         Issue[] issues = chat.prompt()
                 .user(prompt)
@@ -43,6 +40,30 @@ PlantUML:
                         .temperature(1.0)
                         .build())
                 .call()
-                .entity(Issue[].class);return issues == null ? List.of() : Arrays.asList(issues);
+                .entity(Issue[].class);
+        return issues == null ? List.of() : Arrays.asList(issues);
+    }
+
+    public List<Issue> evaluateNarrative(String narrative) {
+        String prompt = String.format("""
+Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
+Верни JSON-массив объектов {{id, title, severity, suggestion}}.
+Правила:
+- Указывай проблемы неполноты, неоднозначности, противоречий, отсутствующих бизнес-правил.
+- severity ∈ {{LOW, MEDIUM, HIGH}}.
+- suggestion — конкретное действие, которое улучшит нарратив.
+
+Нарратив:
+%s
+""", narrative);
+
+        Issue[] issues = chat.prompt()
+                .user(prompt)
+                .options(OpenAiChatOptions.builder()
+                        .temperature(1.0)
+                        .build())
+                .call()
+                .entity(Issue[].class);
+        return issues == null ? List.of() : Arrays.asList(issues);
     }
 }

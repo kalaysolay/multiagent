@@ -17,6 +17,15 @@ public class ReviewWorker implements Worker {
 
     @Override
     public void execute(Context ctx, Map<String, Object> args) {
+        String target = String.valueOf(args.getOrDefault("target", "model"));
+
+        if ("narrative".equalsIgnoreCase(target)) {
+            List<Issue> issues = evaluator.evaluateNarrative(ctx.narrative);
+            ctx.state.put("narrativeIssues", issues);
+            ctx.log("review.narrative: issues=" + issues.size());
+            return;
+        }
+
         String plant = (String) ctx.state.get("plantuml");
         if (plant == null || plant.isBlank())
             throw new IllegalStateException("No PlantUML in context; run model first.");
@@ -35,6 +44,6 @@ public class ReviewWorker implements Worker {
                 .collect(Collectors.toList());
 
         ctx.state.put("issuesRaw", raw);
-        ctx.log("review: issues=" + issues.size());
+        ctx.log("review.model: issues=" + issues.size());
     }
 }

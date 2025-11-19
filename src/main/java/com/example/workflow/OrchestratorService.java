@@ -35,13 +35,22 @@ public class OrchestratorService {
         log.info("Контекст (narrative): {}", ctx.narrative);
         log.info("Максимальное количество итераций: {}", maxIter);
 
-        // 1) Получить план от LLM
-        var plan = chat.prompt()
-                .user(u -> u.text(read(orchestratorPrompt))
-                        .param("narrative", ctx.narrative)
-                        .param("goal", ctx.goal))
-                .call()
-                .entity(OrchestratorPlan.class);
+        // 1) Получить план от LLM или сгенерировать детерминированно
+        OrchestratorPlan plan;
+        if (shouldForceNarrativeReview(ctx.narrative, ctx.goal)) {
+            plan = new OrchestratorPlan(
+                    "Пользователь запросил ревью только нарратива, пропускаем построение модели.",
+                    List.of(new PlanStep("review", Map.of("target", "narrative"))));
+            ctx.log("plan.override: narrative-only");
+            log.info("Цель интерпретирована как ревью только нарратива. План сгенерирован детерминированно.");
+        } else {
+            plan = chat.prompt()
+                    .user(u -> u.text(read(orchestratorPrompt))
+                            .param("narrative", ctx.narrative)
+                            .param("goal", ctx.goal))
+                    .call()
+                    .entity(OrchestratorPlan.class);
+        }
 
         ctx.log("plan: " + plan.plan().size() + " steps");
         log.info("План получен. Количество шагов: {}", plan.plan().size());
@@ -65,6 +74,7 @@ public class OrchestratorService {
         Map<String,Object> artifacts = new LinkedHashMap<>();
         if (ctx.state.containsKey("plantuml")) artifacts.put("plantuml", ctx.state.get("plantuml"));
         if (ctx.state.containsKey("issues")) artifacts.put("issues", ctx.state.get("issues"));
+        if (ctx.state.containsKey("narrativeIssues")) artifacts.put("narrativeIssues", ctx.state.get("narrativeIssues"));
         log.info("Оркестратор завершил выполнение. Request ID: {}", requestId);
         return new WorkflowResponse(requestId, plan, artifacts, ctx.logs);
     }
@@ -72,5 +82,25 @@ public class OrchestratorService {
     private static String read(Resource r){
         try (var in = r.getInputStream()) { return new String(in.readAllBytes()); }
         catch (Exception e){ throw new RuntimeException(e); }
+    }
+
+    private static boolean shouldForceNarrativeReview(String narrative, String goal) {
+        String combined = (goal == null ? "" : goal) + " " + (narrative == null ? "" : narrative);
+        String text = combined.toLowerCase();
+
+        boolean mentionsNarrative = text.contains("нарратив") || text.contains("narrative");
+        if (!mentionsNarrative) return false;
+
+        boolean mentionsReview = text.contains("ревью") || text.contains("review")
+                || text.contains("провер") || text.contains("оцен");
+        if (!mentionsReview) return false;
+
+        boolean mentionsModel = text.contains("модель") || text.contains("model")
+                || text.contains("plantuml") || text.contains("iconix");
+
+        boolean explicitNarrativeOnly = text.contains("только нарратив") || text.contains("без модели")
+                || text.contains("narrative only");
+
+        return explicitNarrativeOnly || (!mentionsModel);
     }
 }
