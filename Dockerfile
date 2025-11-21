@@ -1,23 +1,9 @@
-FROM eclipse-temurin:21-jdk AS build
-WORKDIR /app
+FROM gradle:8.12.1-jdk21
 
-COPY gradlew gradlew
-COPY gradlew.bat gradlew.bat
-COPY settings.gradle.kts settings.gradle.kts
-COPY build.gradle.kts build.gradle.kts
-COPY gradle gradle
-COPY src src
+WORKDIR /
 
-RUN chmod +x gradlew && \
-    ./gradlew bootJar --no-daemon
+COPY / .
 
-FROM eclipse-temurin:21-jre
-WORKDIR /app
+RUN ["./gradlew", "clean", "build"]
 
-COPY --from=build /app/build/libs/*.jar app.jar
-
-ENV JAVA_OPTS=""
-EXPOSE 8080
-
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
-
+CMD ["./gradlew", "run"]

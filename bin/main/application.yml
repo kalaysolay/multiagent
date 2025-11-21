@@ -1,0 +1,14 @@
+server:
+  port: 8080
+
+spring:
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: gpt-5
+          temperature: 1.0
+app:
+  openai:
+    vector-store-id: ${OPENAI_VECTOR_STORE_ID}
