@@ -1,0 +1,9 @@
+.idea
+.gradle
+build
+logs
+.git
+.gitignore
+README.md
+Dockerfile
+

@@ -1,6 +1,5 @@
 package com.example.workflow;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,10 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class EvaluatorService {
 
     private final ChatClient chat;
@@ -21,7 +18,8 @@ public class EvaluatorService {
         this.chat = builder.build();
     }
 
-    public List<Issue> evaluatePlantUml(String narrative, String plantUml) {
+    public List<Issue> evaluatePlantUml(String narrative, String ragContext, String plantUml) {
+
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
 Верни JSON-массив объектов {{id, title, severity, suggestion}}.
@@ -32,10 +30,16 @@ public class EvaluatorService {
 
 Нарратив:
 %s
-""", narrative);
+
+Контекст системы (RAG):
+%s
+
+PlantUML для оценки:
+%s
+""", narrative, normalizeContext(ragContext), plantUml);
 
         Issue[] issues = chat.prompt()
-                .user(prompt)
+                .user(PromptUtils.stEscape(prompt))
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
@@ -44,7 +48,8 @@ public class EvaluatorService {
         return issues == null ? List.of() : Arrays.asList(issues);
     }
 
-    public List<Issue> evaluateNarrative(String narrative) {
+    public List<Issue> evaluateNarrative(String narrative, String ragContext) {
+
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
 Верни JSON-массив объектов {{id, title, severity, suggestion}}.
@@ -55,15 +60,22 @@ public class EvaluatorService {
 
 Нарратив:
 %s
-""", narrative);
+
+Контекст системы (RAG):
+%s
+""", narrative, normalizeContext(ragContext));
 
         Issue[] issues = chat.prompt()
-                .user(prompt)
+                .user(PromptUtils.stEscape(prompt))
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
                 .call()
                 .entity(Issue[].class);
         return issues == null ? List.of() : Arrays.asList(issues);
+    }
+
+    private static String normalizeContext(String ragContext) {
+        return (ragContext == null || ragContext.isBlank()) ? "нет" : ragContext;
     }
 }

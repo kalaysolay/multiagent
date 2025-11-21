@@ -12,15 +12,23 @@ import java.util.stream.Collectors;
 public class ReviewWorker implements Worker {
 
     private final EvaluatorService evaluator;
+    private final OpenAiRagService ragService;
 
     @Override public String name() { return "review"; }
 
     @Override
     public void execute(Context ctx, Map<String, Object> args) {
         String target = String.valueOf(args.getOrDefault("target", "model"));
+        String narrative = ctx.narrativeEffective();
+
+        var rag = ragService.retrieveContext(narrative, 4);
+        ctx.log(String.format("rag.review: fragments=%d, vs=%s",
+                rag.fragmentsCount(),
+                rag.vectorStoreAvailable()));
+        String ragContext = rag.text();
 
         if ("narrative".equalsIgnoreCase(target)) {
-            List<Issue> issues = evaluator.evaluateNarrative(ctx.narrative);
+            List<Issue> issues = evaluator.evaluateNarrative(narrative, ragContext);
             ctx.state.put("narrativeIssues", issues);
             ctx.log("review.narrative: issues=" + issues.size());
             return;
@@ -30,7 +38,7 @@ public class ReviewWorker implements Worker {
         if (plant == null || plant.isBlank())
             throw new IllegalStateException("No PlantUML in context; run model first.");
 
-        List<Issue> issues = evaluator.evaluatePlantUml(ctx.narrative, plant);
+        List<Issue> issues = evaluator.evaluatePlantUml(narrative, ragContext, plant);
         ctx.state.put("issues", issues);
 
         // «Сырые» данные — с теми же ключами, что ожидает mapIssues()

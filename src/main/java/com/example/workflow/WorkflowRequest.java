@@ -8,6 +8,7 @@ import java.util.Map;
 public record WorkflowRequest(
         String narrative,
         String goal,
+        String task,
         Constraints constraints
 )
 {

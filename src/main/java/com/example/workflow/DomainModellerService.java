@@ -1,6 +1,5 @@
 package com.example.workflow;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -8,15 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 
-import java.nio.file.*;
-import java.util.*;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DomainModellerService {
 
     private final ChatClient chat;
@@ -144,9 +138,12 @@ public class DomainModellerService {
         ```
         """;
 
-    public String generateIconixPlantUml(String narrative) {
+    public String generateIconixPlantUml(String narrative, String ragContext) {
         String userPromptRaw = String.format("""
             НАРРАТИВ:
+            %s
+
+            ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ (из RAG):
             %s
 
             Сгенерируй PlantUML доменной модели ICONIX по правилам выше.
@@ -154,23 +151,19 @@ public class DomainModellerService {
             1) начинается строкой "@startuml" и заканчивается "@enduml";
             2) не добавляй никаких пояснений вне блока;
             3) максимум 12 классов/объектов/интерфейсов/сущностей на диаграмме.
-            """, narrative);
+            """, narrative, normalizeContext(ragContext));
 
         return chat.prompt()
-                .system(stEscape(ICONIX_SYSTEM_PROMPT))
-                .user(stEscape(userPromptRaw))
+                .system(PromptUtils.stEscape(ICONIX_SYSTEM_PROMPT))
+                .user(PromptUtils.stEscape(userPromptRaw))
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
                 .call()
                 .content();
-
-
-        //String normalized = normalizePlantUmlBraces(result);
-        //return normalized;
     }
 
-    public String refineModelWithIssues(String narrative, String currentPlantUml, List<Issue> issues) {
+    public String refineModelWithIssues(String narrative, String currentPlantUml, List<Issue> issues, String ragContext) {
         StringBuilder sb = new StringBuilder();
         if (issues == null || issues.isEmpty()) {
             sb.append("нет");
@@ -191,54 +184,30 @@ public class DomainModellerService {
             ЗАМЕЧАНИЯ ДЛЯ ПРАВКИ:
             %s
 
+            ДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ (из RAG):
+            %s
+
             Обнови модель, строго следуя ранее указанным правилам, и выведи ТОЛЬКО один блок PlantUML.
             Если какое-то замечание неуместно — игнорируй его молча.
             Максимум 12 элементов на диаграмме.
-            """, narrative, currentPlantUml, sb.toString());
+            """, narrative, currentPlantUml, sb.toString(), normalizeContext(ragContext));
 
         return chat.prompt()
-                .system(stEscape(ICONIX_SYSTEM_PROMPT))
-                .user(stEscape(userPromptRaw))
+                .system(PromptUtils.stEscape(ICONIX_SYSTEM_PROMPT))
+                .user(PromptUtils.stEscape(userPromptRaw))
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
                 .call()
                 .content();
-
-       // String normalized = normalizePlantUmlBraces(result);
-        //return normalized;
-
     }
 
     /**
      * Экранирует фигурные скобки для StringTemplate (ST4), чтобы {field}, {method}, {user}, {editor}
      * и любые другие литеральные {...} не воспринимались как плейсхолдеры шаблона.
      */
-    private static String stEscape(String s) {
-        if (s == null) return null;
-        return s.replace("{", "{{").replace("}", "}}");
+    private static String normalizeContext(String ragContext) {
+        return (ragContext == null || ragContext.isBlank()) ? "нет" : ragContext;
     }
 
-    private static String normalizePlantUmlBraces(String text) {
-        if (text == null) return null;
-
-        // Найдём все блоки @startuml ... @enduml (на случай, если модель вдруг вернёт несколько)
-        Pattern p = Pattern.compile("(?s)(@startuml.*?@enduml)");
-        Matcher m = p.matcher(text);
-        StringBuffer out = new StringBuffer();
-        boolean changedAny = false;
-
-        while (m.find()) {
-            String block = m.group(1);
-            String fixed = block.replace("{{", "{").replace("}}", "}");
-            if (!fixed.equals(block)) changedAny = true;
-            m.appendReplacement(out, Matcher.quoteReplacement(fixed));
-        }
-        m.appendTail(out);
-
-        if (changedAny) {
-            log.debug("normalizePlantUmlBraces: fixed doubled braces inside @startuml..@enduml");
-        }
-        return out.toString();
-    }
 }

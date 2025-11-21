@@ -1,10 +1,10 @@
 # ICONIX Agents (Spring Boot + Spring AI)
 
 Минимальный проект с эндпоинтом `/workflow/run`:
-- Оркестратор вызывает два сервиса: `DomainModellerService` и `EvaluatorService` (обычные Spring `@Service`).
-- 2 итерации: моделирование → оценка → доработка → повторная оценка.
-- На выходе: итоговый PlantUML и список замечаний, закрытых между итерациями.
-- Хранилище артефактов — OpenAI Files + Vector Store (по желанию).
+- Оркестратор запускает цепочку агентов: `NarrativeWorker` → `ModelWorker` → `ReviewWorker` → `ModelWorker(refine)`.
+- Все агенты используют RAG-контекст из OpenAI Vector Store для терминологии и знания о системе Комплаенс.
+- На выходе: итоговый PlantUML, замечания ревью, логи шагов.
+- Дополнительно можно сложить артефакты в OpenAI Files + Vector Store.
 
 ## Быстрый старт
 
@@ -20,10 +20,29 @@
    ./gradlew bootRun
    ```
 
-4) Проверка:
+4) Проверка (передаём описание задачи — нарратив генерируется автоматически):
    ```bash
-   curl -X POST http://localhost:8080/workflow/run      -H "Content-Type: application/json"      -d '{"narrative":"Пользователь создаёт обращение на проверку контрагента, прикладывает файл, указывает ИНН, менеджер комплаенс просматривает и запрашивает дополнительные документы, затем принимает решение и уведомляет пользователя."}'
+   curl -X POST http://localhost:8080/workflow/run \
+     -H "Content-Type: application/json" \
+     -d '{
+       "goal": "Запуск проверки нового контрагента и уведомление заинтересованных сторон",
+       "task": "Автоматизировать процесс KYC: заявка, сбор документов, дубли, чек-листы, уведомления",
+       "constraints": { "maxIterations": 6 }
+     }'
    ```
+
+## Запуск в Docker / Render.com
+
+1. Собрать образ локально:
+   ```bash
+   docker build -t iconix-agents .
+   docker run --rm -p 8080:8080 -e OPENAI_API_KEY=sk-... iconix-agents
+   ```
+2. Для Render.com выбери **Docker** в качестве способа деплоя и укажи репозиторий.
+3. Добавь переменные окружения:
+   - `OPENAI_API_KEY` — обязательна;
+   - `OPENAI_VECTOR_STORE_ID` — если нужно подключить готовый Vector Store.
+4. Render автоматически выполнит `docker build` и запустит контейнер с `java -jar app.jar`.
 
 ## gradle wrapper (если нужен)
 Если у тебя установлен локальный Gradle, можешь добавить wrapper в проект:
