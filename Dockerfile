@@ -1,8 +1,8 @@
 FROM gradle:8.12.1-jdk21
 
-WORKDIR /
+WORKDIR /app
 
-COPY / .
+COPY . .
 
 RUN ["./gradlew", "clean", "build"]
 
