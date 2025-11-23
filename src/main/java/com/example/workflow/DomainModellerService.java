@@ -208,6 +208,6 @@ public class DomainModellerService {
      */
     private static String normalizeContext(String ragContext) {
         return (ragContext == null || ragContext.isBlank()) ? "нет" : ragContext;
-    }
+        }
 
 }

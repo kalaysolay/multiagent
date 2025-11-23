@@ -19,6 +19,11 @@ public class EvaluatorService {
     }
 
     public List<Issue> evaluatePlantUml(String narrative, String ragContext, String plantUml) {
+        // Экранируем все параметры перед вставкой в String.format
+        String safeNarrative = PromptUtils.fullEscape(narrative);
+        String safeRagContext = PromptUtils.fullEscape(normalizeContext(ragContext));
+        // PlantUML может быть очень большим, обрезаем до разумного размера и экранируем
+        String safePlantUml = PromptUtils.fullEscape(truncateIfNeeded(plantUml, 50000));
 
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
@@ -36,10 +41,10 @@ public class EvaluatorService {
 
 PlantUML для оценки:
 %s
-""", narrative, normalizeContext(ragContext), plantUml);
+""", safeNarrative, safeRagContext, safePlantUml);
 
         Issue[] issues = chat.prompt()
-                .user(PromptUtils.stEscape(prompt))
+                .user(prompt) // Уже экранировано через fullEscape
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
@@ -49,6 +54,8 @@ PlantUML для оценки:
     }
 
     public List<Issue> evaluateNarrative(String narrative, String ragContext) {
+        String safeNarrative = PromptUtils.fullEscape(narrative);
+        String safeRagContext = PromptUtils.fullEscape(normalizeContext(ragContext));
 
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
@@ -63,10 +70,10 @@ PlantUML для оценки:
 
 Контекст системы (RAG):
 %s
-""", narrative, normalizeContext(ragContext));
+""", safeNarrative, safeRagContext);
 
         Issue[] issues = chat.prompt()
-                .user(PromptUtils.stEscape(prompt))
+                .user(prompt) // Уже экранировано через fullEscape
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
@@ -77,5 +84,15 @@ PlantUML для оценки:
 
     private static String normalizeContext(String ragContext) {
         return (ragContext == null || ragContext.isBlank()) ? "нет" : ragContext;
+    }
+
+    /**
+     * Обрезает строку до максимальной длины, если она превышает лимит.
+     * Добавляет суффикс, указывающий на обрезку.
+     */
+    private static String truncateIfNeeded(String text, int maxLength) {
+        if (text == null) return null;
+        if (text.length() <= maxLength) return text;
+        return text.substring(0, maxLength) + "\n\n[... текст обрезан для экономии токенов ...]";
     }
 }
