@@ -1,5 +1,7 @@
-package com.example.workflow;
+package com.example.workflow.agentsServices;
 
+import com.example.workflow.Issue;
+import com.example.workflow.PromptUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;

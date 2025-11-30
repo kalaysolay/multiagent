@@ -1,7 +1,6 @@
 package com.example.workflow;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 //@RestController
@@ -27,5 +26,13 @@ public class WorkflowController {
     @PostMapping("/run")
     public WorkflowResponse run(@RequestBody WorkflowRequest req) throws Exception {
         return orchestrator.run(req);
+    }
+    
+    @PostMapping("/resume")
+    public WorkflowResponse resume(@RequestBody WorkflowRequest req) throws Exception {
+        if (req.requestId() == null || req.requestId().isBlank()) {
+            throw new IllegalArgumentException("requestId is required for resume");
+        }
+        return orchestrator.resumeWorkflow(req.requestId(), req);
     }
 }

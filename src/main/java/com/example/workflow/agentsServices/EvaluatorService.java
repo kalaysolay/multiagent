@@ -1,5 +1,7 @@
-package com.example.workflow;
+package com.example.workflow.agentsServices;
 
+import com.example.workflow.Issue;
+import com.example.workflow.PromptUtils;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;

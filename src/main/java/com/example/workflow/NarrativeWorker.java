@@ -1,5 +1,6 @@
 package com.example.workflow;
 
+import com.example.workflow.agentsServices.NarrativeWriterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

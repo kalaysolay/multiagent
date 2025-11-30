@@ -6,13 +6,15 @@ import java.util.List;
 import java.util.Map;
 
 public record WorkflowRequest(
-        String narrative,
+        String requestId,      // Для возобновления существующей сессии
+        String narrative,      // Нарратив (может быть обновлен при возобновлении)
         String goal,
         String task,
-        Constraints constraints
+        String domainModel    // Domain model (PlantUML) для обновления при возобновлении
+        // Constraints constraints  // Закомментировано - рудимент
 )
 {
-    public record Constraints(Integer maxIterations) {}
+    // public record Constraints(Integer maxIterations) {}  // Закомментировано - рудимент
 }
 
 
