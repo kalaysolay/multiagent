@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICONIX Workflow Agent</title>
+    <link rel="stylesheet" href="/css/workflow.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>ICONIX Workflow Agent</h1>
+        </header>
+
+        <div class="main-content">
+            <!-- Левая панель: Ввод запроса -->
+            <div class="input-panel">
+                <div class="input-section">
+                    <label for="narrativeInput">Нарратив / Запрос:</label>
+                    <textarea 
+                        id="narrativeInput" 
+                        placeholder="Введите описание задачи или нарратив..."
+                        rows="8"
+                    ></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button id="sendButton" class="btn btn-primary">
+                        <span class="btn-text">Отправить запрос</span>
+                        <span class="btn-loader" style="display: none;">
+                            <span class="spinner"></span>
+                            Обработка...
+                        </span>
+                    </button>
+                    <button id="resumeButton" class="btn btn-secondary" style="display: none;">
+                        <span class="btn-text">Отправить обновления</span>
+                        <span class="btn-loader" style="display: none;">
+                            <span class="spinner"></span>
+                            Отправка...
+                        </span>
+                    </button>
+                </div>
+
+                <div id="sessionInfo" class="session-info" style="display: none;">
+                    <strong>Сессия:</strong> <span id="sessionId"></span>
+                </div>
+            </div>
+
+            <!-- Правая панель: Результаты -->
+            <div class="results-panel">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="narrative">Нарратив</button>
+                    <button class="tab-btn" data-tab="domain">Доменная модель</button>
+                    <button class="tab-btn" data-tab="usecase">Диаграмма прецедентов</button>
+                    <button class="tab-btn" data-tab="mvc">MVC-модель</button>
+                </div>
+
+                <div class="tab-content">
+                    <!-- Нарратив -->
+                    <div class="tab-pane active" id="narrative-tab">
+                        <div class="field-header">
+                            <label>Нарратив</label>
+                            <button class="copy-btn" data-copy="narrative">Копировать</button>
+                        </div>
+                        <textarea 
+                            id="narrativeOutput" 
+                            class="output-field resizable" 
+                            readonly
+                            placeholder="Нарратив появится здесь..."
+                        ></textarea>
+                    </div>
+
+                    <!-- Доменная модель -->
+                    <div class="tab-pane" id="domain-tab">
+                        <div class="field-header">
+                            <label>Доменная модель (PlantUML)</label>
+                            <button class="copy-btn" data-copy="domain">Копировать</button>
+                        </div>
+                        <textarea 
+                            id="domainOutput" 
+                            class="output-field resizable editable" 
+                            placeholder="Доменная модель появится здесь..."
+                        ></textarea>
+                        <div class="field-hint">Вы можете редактировать эту модель перед отправкой обновлений</div>
+                    </div>
+
+                    <!-- Диаграмма прецедентов -->
+                    <div class="tab-pane" id="usecase-tab">
+                        <div class="field-header">
+                            <label>Диаграмма прецедентов (PlantUML)</label>
+                            <button class="copy-btn" data-copy="usecase">Копировать</button>
+                        </div>
+                        <textarea 
+                            id="usecaseOutput" 
+                            class="output-field resizable" 
+                            readonly
+                            placeholder="Диаграмма прецедентов появится здесь..."
+                        ></textarea>
+                    </div>
+
+                    <!-- MVC-модель -->
+                    <div class="tab-pane" id="mvc-tab">
+                        <div class="field-header">
+                            <label>MVC-модель (PlantUML)</label>
+                            <button class="copy-btn" data-copy="mvc">Копировать</button>
+                        </div>
+                        <textarea 
+                            id="mvcOutput" 
+                            class="output-field resizable" 
+                            readonly
+                            placeholder="MVC-модель появится здесь..."
+                        ></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <script src="/js/workflow.js"></script>
+</body>
+</html>
+

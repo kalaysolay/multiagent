@@ -112,6 +112,7 @@ public class WorkflowSessionService {
         WorkflowSession session = sessionOpt.get();
         
         // Обновляем narrative если передан
+        // Данные приходят из JSON, Spring автоматически их парсит, оставляем как есть
         if (narrative != null && !narrative.isBlank()) {
             session.setNarrative(narrative);
         }

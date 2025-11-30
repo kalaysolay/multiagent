@@ -23,6 +23,11 @@ import org.springframework.web.bind.annotation.*;
 public class WorkflowController {
     private final OrchestratorService orchestrator;
 
+    @GetMapping("/")
+    public String index() {
+        return "redirect:/index.html";
+    }
+
     @PostMapping("/run")
     public WorkflowResponse run(@RequestBody WorkflowRequest req) throws Exception {
         return orchestrator.run(req);
