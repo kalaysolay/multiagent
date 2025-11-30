@@ -29,10 +29,10 @@ public class EvaluatorService {
 
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
-Верни JSON-массив объектов {{id, title, severity, suggestion}}.
+Верни JSON-массив объектов {id, title, severity, suggestion}.
 Правила:
 - Указывай проблемы неполноты, неоднозначности, противоречий, отсутствующих бизнес-правил.
-- severity ∈ {{LOW, MEDIUM, HIGH}}.
+- severity ∈ {LOW, MEDIUM, HIGH}.
 - suggestion — конкретное действие, которое улучшит нарратив.
 
 Нарратив:
@@ -46,7 +46,7 @@ PlantUML для оценки:
 """, safeNarrative, safeRagContext, safePlantUml);
 
         Issue[] issues = chat.prompt()
-                .user(prompt) // Уже экранировано через fullEscape
+                .user(PromptUtils.stEscape(prompt)) // Дополнительное экранирование для ST4
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
@@ -61,10 +61,10 @@ PlantUML для оценки:
 
         String prompt = String.format("""
 Ты — аналитик требований. Проведи ревью пользовательского нарратива и оцени его качество.
-Верни JSON-массив объектов {{id, title, severity, suggestion}}.
+Верни JSON-массив объектов {id, title, severity, suggestion}.
 Правила:
 - Указывай проблемы неполноты, неоднозначности, противоречий, отсутствующих бизнес-правил.
-- severity ∈ {{LOW, MEDIUM, HIGH}}.
+- severity ∈ {LOW, MEDIUM, HIGH}.
 - suggestion — конкретное действие, которое улучшит нарратив.
 
 Нарратив:
@@ -75,7 +75,7 @@ PlantUML для оценки:
 """, safeNarrative, safeRagContext);
 
         Issue[] issues = chat.prompt()
-                .user(prompt) // Уже экранировано через fullEscape
+                .user(PromptUtils.stEscape(prompt)) // Экранируем фигурные скобки для ST4
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
