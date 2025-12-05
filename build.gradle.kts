@@ -29,6 +29,9 @@ dependencies {
     // Flyway для миграций
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
+    
+    // PlantUML для рендеринга диаграмм
+    implementation("net.sourceforge.plantuml:plantuml:1.2024.5")
 
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
