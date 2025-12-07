@@ -1,7 +1,7 @@
 package com.example.workflow;
 
+import com.example.portal.shared.service.LlmService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,14 +12,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ChatController {
     
-    private final ChatClient chatClient;
+    private final LlmService llmService;
     
     @PostMapping
     public ChatResponse chat(@RequestBody ChatRequest request) {
-        String response = chatClient.prompt()
-            .user(request.message())
-            .call()
-            .content();
+        String response = llmService.generate(request.message());
         return new ChatResponse(response);
     }
     

@@ -12,8 +12,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+        name = "app.vector-store-provider", havingValue = "OPENAI", matchIfMissing = true
+)
 @Slf4j
-public class OpenAiRagService {
+public class OpenAiRagService implements RagService {
 
     private final WebClient client;
     private final String vectorStoreId;
@@ -33,6 +36,7 @@ public class OpenAiRagService {
      * Возвращает конкатенированный текст из topK релевантных фрагментов.
      * Возвращает пустой результат, если векторное хранилище не задано или произошла ошибка.
      */
+    @Override
     public ContextResult retrieveContext(String query, int topK) {
         if (vectorStoreId == null) {
             return new ContextResult("", 0, false);
@@ -109,12 +113,6 @@ public class OpenAiRagService {
             }
         }
         return sb.toString();
-    }
-
-    public record ContextResult(String text, int fragmentsCount, boolean vectorStoreAvailable) {
-        public String text() {
-            return text == null ? "" : text;
-        }
     }
 }
 

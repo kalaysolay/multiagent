@@ -1,7 +1,7 @@
 package com.example.portal.agents.iconix.worker;
 
 import com.example.portal.agents.iconix.service.agentservices.UseCaseModellerService;
-import com.example.portal.shared.service.OpenAiRagService;
+import com.example.portal.shared.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +12,7 @@ import java.util.Map;
 public class UseCaseWorker implements Worker {
 
     private final UseCaseModellerService useCaseModeller;
-    private final OpenAiRagService ragService;
+    private final RagService ragService;
 
     @Override
     public String name() {
