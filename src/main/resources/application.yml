@@ -32,4 +32,4 @@ spring:
 
 app:
   openai:
-    vector-store-id: ${OPENAI_VECTOR_STORE_ID:vs_68e649a20d0c8191aaa619e4edeeb03a}
+    vector-store-id: ${OPENAI_VECTOR_STORE_ID}
