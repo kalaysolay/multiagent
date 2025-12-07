@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICONIX Agent - Список агентов</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <link rel="stylesheet" href="/css/agent-list.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Боковое меню -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Портал аналитика</h2>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <!-- Раздел Документация -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Документация</div>
+                    <ul class="menu-items">
+                        <li><a href="/index.html" class="menu-item">User Story</a></li>
+                        <li><a href="/index.html" class="menu-item">Требования</a></li>
+                        <li><a href="/index.html" class="menu-item">Статьи</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Раздел Агенты -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Агенты</div>
+                    <ul class="menu-items">
+                        <li><a href="/iconix-agent-list.html" class="menu-item active">ICONIX Agent</a></li>
+                        <li><a href="#" class="menu-item">Анализатор требований</a></li>
+                        <li><a href="#" class="menu-item">Jira Agent</a></li>
+                        <li><a href="#" class="menu-item">Git Analyser Agent</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Раздел Чаты -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Чаты</div>
+                    <ul class="menu-items">
+                        <li><a href="/chat.html" class="menu-item">Chat with LLM</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+        
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>ICONIX Agent</h1>
+                <p>Список запущенных агентов</p>
+            </div>
+            
+            <div class="table-container">
+                <table class="agents-table" id="agentsTable">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Request Id</th>
+                            <th>Status</th>
+                            <th>Автор</th>
+                            <th>Дата запуска</th>
+                            <th>Дата завершения</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentsTableBody">
+                        <tr>
+                            <td colspan="6" class="loading">Загрузка данных...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/js/agent-list.js"></script>
+</body>
+</html>
+

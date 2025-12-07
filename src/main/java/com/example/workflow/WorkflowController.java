@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class WorkflowController {
     private final OrchestratorService orchestrator;
+    private final WorkflowSessionService sessionService;
 
     @GetMapping("/")
     public String index() {
@@ -39,5 +40,10 @@ public class WorkflowController {
             throw new IllegalArgumentException("requestId is required for resume");
         }
         return orchestrator.resumeWorkflow(req.requestId(), req);
+    }
+    
+    @GetMapping("/sessions")
+    public java.util.List<WorkflowSessionSummary> getAllSessions() {
+        return sessionService.getAllSessions();
     }
 }

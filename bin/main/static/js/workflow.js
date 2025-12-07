@@ -6,7 +6,20 @@ let isPausedForReview = false;
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
     initEventListeners();
+    loadSessionFromUrl();
 });
+
+function loadSessionFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const requestId = urlParams.get('requestId');
+    
+    if (requestId) {
+        currentRequestId = requestId;
+        document.getElementById('sessionId').textContent = requestId;
+        document.getElementById('sessionInfo').style.display = 'block';
+        // Можно загрузить данные сессии, если нужно
+    }
+}
 
 function initEventListeners() {
     // Кнопка отправки запроса

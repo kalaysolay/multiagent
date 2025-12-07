@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,6 +62,18 @@ public class WorkflowSessionService {
     @Transactional(readOnly = true)
     public Optional<WorkflowSession> loadSession(String requestId) {
         return repository.findByRequestId(requestId);
+    }
+    
+    @Transactional(readOnly = true)
+    public List<WorkflowSessionSummary> getAllSessions() {
+        return repository.findAll().stream()
+                .sorted((a, b) -> {
+                    Instant aTime = a.getCreatedAt() != null ? a.getCreatedAt() : Instant.EPOCH;
+                    Instant bTime = b.getCreatedAt() != null ? b.getCreatedAt() : Instant.EPOCH;
+                    return bTime.compareTo(aTime); // Сортировка по убыванию (новые сверху)
+                })
+                .map(WorkflowSessionSummary::from)
+                .collect(java.util.stream.Collectors.toList());
     }
     
     public Worker.Context restoreContext(WorkflowSession session) {

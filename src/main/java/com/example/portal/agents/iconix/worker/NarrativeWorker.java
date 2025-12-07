@@ -1,0 +1,43 @@
+package com.example.portal.agents.iconix.worker;
+
+import com.example.portal.agents.iconix.service.agentservices.NarrativeWriterService;
+import com.example.portal.shared.service.OpenAiRagService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+public class NarrativeWorker implements Worker {
+
+    private final NarrativeWriterService narrativeWriter;
+    private final OpenAiRagService ragService;
+
+    @Override
+    public String name() {
+        return "narrative";
+    }
+
+    @Override
+    public void execute(Context ctx, Map<String, Object> args) {
+        String description = args != null && args.containsKey("description")
+                ? String.valueOf(args.get("description"))
+                : ctx.taskOrGoal();
+
+        var rag = ragService.retrieveContext(description, 4);
+        ctx.log(String.format("rag.narrative: fragments=%d, vs=%s",
+                rag.fragmentsCount(),
+                rag.vectorStoreAvailable()));
+
+        String generated = narrativeWriter.composeNarrative(
+                description,
+                ctx.goal,
+                rag.text()
+        );
+
+        ctx.overrideNarrative(generated);
+        ctx.log("narrative.generated: chars=" + generated.length());
+    }
+}
+

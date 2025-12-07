@@ -11,27 +11,12 @@ body {
     line-height: 1.6;
 }
 
-.container {
+/* Работает внутри портала */
+.workflow-detail {
     max-width: 1600px;
-    margin: 0 auto;
-    padding: 20px;
 }
 
-.header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 20px 30px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.header h1 {
-    font-size: 24px;
-    font-weight: 600;
-}
-
-.main-content {
+.workflow-container {
     display: grid;
     grid-template-columns: 1fr 2fr;
     gap: 20px;
@@ -309,7 +294,7 @@ body {
 
 /* Responsive */
 @media (max-width: 1200px) {
-    .main-content {
+    .workflow-container {
         grid-template-columns: 1fr;
     }
 }

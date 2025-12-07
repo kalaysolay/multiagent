@@ -47,3 +47,8 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// Явно указываем главный класс приложения
+springBoot {
+    mainClass.set("com.example.portal.Application")
+}
