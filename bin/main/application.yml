@@ -4,10 +4,10 @@ server:
 spring:
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY: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}
       chat:
         options:
-          model: gpt-5
+          model: gpt-3.5-turbo
           temperature: 1.0
   
   datasource:
@@ -32,4 +32,4 @@ spring:
 
 app:
   openai:
-    vector-store-id: ${OPENAI_VECTOR_STORE_ID}
+    vector-store-id: ${OPENAI_VECTOR_STORE_ID:vs_68e649a20d0c8191aaa619e4edeeb03a}

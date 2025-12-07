@@ -1,5 +1,7 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.model.WorkflowRequest;
+import com.example.portal.agents.iconix.model.WorkflowResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

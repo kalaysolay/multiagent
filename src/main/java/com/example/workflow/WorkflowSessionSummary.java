@@ -1,5 +1,8 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.entity.WorkflowSession;
+import com.example.portal.agents.iconix.model.WorkflowStatus;
+
 import java.time.Instant;
 
 public record WorkflowSessionSummary(

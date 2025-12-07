@@ -1,6 +1,9 @@
 package com.example.workflow;
 
-import com.example.workflow.agentsServices.EvaluatorService;
+import com.example.portal.agents.iconix.model.Issue;
+import com.example.portal.agents.iconix.service.agentservices.EvaluatorService;
+import com.example.portal.agents.iconix.worker.Worker;
+import com.example.portal.shared.service.OpenAiRagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -8,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@Component
+// @Component - отключено, используется версия из com.example.portal.agents.iconix.worker
 @RequiredArgsConstructor
 public class ReviewWorker implements Worker {
 

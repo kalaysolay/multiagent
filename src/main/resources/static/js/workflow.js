@@ -209,11 +209,35 @@ function handleResponse(data) {
         }
     }
     
+    // Обновляем состояние кнопок просмотра диаграмм
+    updateViewDiagramButtons();
+    
     // Переключаемся на первую вкладку с данными
     if (data.artifacts?.narrative) {
         switchTab('narrative');
     } else if (data.artifacts?.plantuml) {
         switchTab('domain');
+    }
+}
+
+function updateViewDiagramButtons() {
+    // Обновляем состояние кнопок на основе содержимого полей
+    const domainBtn = document.getElementById('viewDomainDiagram');
+    const domainField = document.getElementById('domainOutput');
+    if (domainBtn && domainField) {
+        domainBtn.disabled = !domainField.value.trim();
+    }
+    
+    const usecaseBtn = document.getElementById('viewUseCaseDiagram');
+    const usecaseField = document.getElementById('usecaseOutput');
+    if (usecaseBtn && usecaseField) {
+        usecaseBtn.disabled = !usecaseField.value.trim();
+    }
+    
+    const mvcBtn = document.getElementById('viewMvcDiagram');
+    const mvcField = document.getElementById('mvcOutput');
+    if (mvcBtn && mvcField) {
+        mvcBtn.disabled = !mvcField.value.trim();
     }
 }
 

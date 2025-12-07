@@ -1,5 +1,12 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.exception.PauseForUserReviewException;
+import com.example.portal.agents.iconix.model.OrchestratorPlan;
+import com.example.portal.agents.iconix.model.PlanStep;
+import com.example.portal.agents.iconix.model.WorkflowRequest;
+import com.example.portal.agents.iconix.model.WorkflowResponse;
+import com.example.portal.agents.iconix.model.WorkflowStatus;
+import com.example.portal.agents.iconix.worker.Worker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +19,7 @@ import org.slf4j.LoggerFactory;
 public class OrchestratorService {
     private static final Logger log = LoggerFactory.getLogger(OrchestratorService.class);
 
-    private final WorkersRegistry registry;
+    private final com.example.portal.agents.iconix.service.WorkersRegistry registry;
     private final WorkflowSessionService sessionService;
 
     @Transactional
@@ -20,8 +27,8 @@ public class OrchestratorService {
         String requestId = req.requestId() != null ? req.requestId() : UUID.randomUUID().toString();
         
         // Проверяем, нужно ли возобновить существующую сессию
-        Optional<WorkflowSession> existingSession = sessionService.loadSession(requestId);
-        if (existingSession.isPresent() && existingSession.get().getStatus() == WorkflowStatus.PAUSED_FOR_REVIEW) {
+        Optional<com.example.portal.agents.iconix.entity.WorkflowSession> existingSession = sessionService.loadSession(requestId);
+        if (existingSession.isPresent() && existingSession.get().getStatus() == com.example.portal.agents.iconix.model.WorkflowStatus.PAUSED_FOR_REVIEW) {
             return resumeWorkflow(requestId, req);
         }
         
@@ -66,13 +73,13 @@ public class OrchestratorService {
         log.info("=== Возобновление workflow ===");
         log.info("Request ID: {}", requestId);
         
-        Optional<WorkflowSession> sessionOpt = sessionService.loadSession(requestId);
+        Optional<com.example.portal.agents.iconix.entity.WorkflowSession> sessionOpt = sessionService.loadSession(requestId);
         if (sessionOpt.isEmpty()) {
             throw new IllegalArgumentException("Session not found: " + requestId);
         }
         
-        WorkflowSession session = sessionOpt.get();
-        if (session.getStatus() != WorkflowStatus.PAUSED_FOR_REVIEW) {
+        com.example.portal.agents.iconix.entity.WorkflowSession session = sessionOpt.get();
+        if (session.getStatus() != com.example.portal.agents.iconix.model.WorkflowStatus.PAUSED_FOR_REVIEW) {
             throw new IllegalStateException("Session is not paused for review: " + requestId);
         }
         
@@ -117,7 +124,7 @@ public class OrchestratorService {
                 log.info("Параметры: {}", step.args() != null ? step.args() : "не заданы");
                 
                 // Сохраняем сессию перед каждым шагом
-                sessionService.saveSession(ctx, plan, i, WorkflowStatus.RUNNING, null, null);
+                sessionService.saveSession(ctx, plan, i, com.example.portal.agents.iconix.model.WorkflowStatus.RUNNING, null, null);
                 
                 var worker = registry.get(step.tool());
                 log.info("Запуск worker'а: {}", worker.getClass().getSimpleName());
@@ -128,7 +135,7 @@ public class OrchestratorService {
                 } catch (PauseForUserReviewException e) {
                     // Пауза для пользовательского ревью
                     log.info("Workflow приостановлен для пользовательского ревью на шаге {}", i + 1);
-                    sessionService.saveSession(ctx, plan, i, WorkflowStatus.PAUSED_FOR_REVIEW, 
+                    sessionService.saveSession(ctx, plan, i, com.example.portal.agents.iconix.model.WorkflowStatus.PAUSED_FOR_REVIEW, 
                                              e.getReviewData(), null);
                     
                     // Формируем ответ с информацией о паузе
@@ -142,7 +149,7 @@ public class OrchestratorService {
             }
             
             // Все шаги выполнены
-            sessionService.saveSession(ctx, plan, currentStepIndex, WorkflowStatus.COMPLETED, null, null);
+            sessionService.saveSession(ctx, plan, currentStepIndex, com.example.portal.agents.iconix.model.WorkflowStatus.COMPLETED, null, null);
             
             // Формируем финальный ответ
             Map<String, Object> artifacts = buildArtifacts(ctx);
@@ -152,7 +159,7 @@ public class OrchestratorService {
             
         } catch (Exception e) {
             log.error("Ошибка выполнения workflow", e);
-            sessionService.saveSession(ctx, plan, currentStepIndex, WorkflowStatus.FAILED, null, null);
+            sessionService.saveSession(ctx, plan, currentStepIndex, com.example.portal.agents.iconix.model.WorkflowStatus.FAILED, null, null);
             throw e;
         }
     }

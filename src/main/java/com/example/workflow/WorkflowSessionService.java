@@ -1,5 +1,10 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.entity.WorkflowSession;
+import com.example.portal.agents.iconix.model.OrchestratorPlan;
+import com.example.portal.agents.iconix.model.WorkflowStatus;
+import com.example.portal.agents.iconix.repository.WorkflowSessionRepository;
+import com.example.portal.agents.iconix.worker.Worker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +25,8 @@ public class WorkflowSessionService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     @Transactional
-    public WorkflowSession saveSession(Worker.Context ctx, OrchestratorPlan plan, 
-                                      int currentStepIndex, WorkflowStatus status, 
+    public WorkflowSession saveSession(Worker.Context ctx, com.example.portal.agents.iconix.model.OrchestratorPlan plan, 
+                                      int currentStepIndex, com.example.portal.agents.iconix.model.WorkflowStatus status, 
                                       String userReviewData, Integer maxIterations) {
         try {
             WorkflowSession session = repository.findByRequestId(ctx.requestId)
@@ -104,7 +109,7 @@ public class WorkflowSessionService {
         }
     }
     
-    public OrchestratorPlan restorePlan(WorkflowSession session) {
+    public com.example.portal.agents.iconix.model.OrchestratorPlan restorePlan(WorkflowSession session) {
         try {
             if (session.getPlanJson() == null) {
                 throw new IllegalStateException("Plan JSON is null for session: " + session.getRequestId());
@@ -181,7 +186,7 @@ public class WorkflowSessionService {
         }
     }
     
-    private String serializePlan(OrchestratorPlan plan) {
+    private String serializePlan(com.example.portal.agents.iconix.model.OrchestratorPlan plan) {
         try {
             return objectMapper.writeValueAsString(plan);
         } catch (Exception e) {
@@ -190,9 +195,9 @@ public class WorkflowSessionService {
         }
     }
     
-    private OrchestratorPlan deserializePlan(String json) {
+    private com.example.portal.agents.iconix.model.OrchestratorPlan deserializePlan(String json) {
         try {
-            return objectMapper.readValue(json, OrchestratorPlan.class);
+            return objectMapper.readValue(json, com.example.portal.agents.iconix.model.OrchestratorPlan.class);
         } catch (Exception e) {
             log.error("Failed to deserialize plan", e);
             throw new RuntimeException("Failed to deserialize plan", e);

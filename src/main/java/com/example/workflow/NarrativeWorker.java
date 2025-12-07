@@ -1,12 +1,14 @@
 package com.example.workflow;
 
-import com.example.workflow.agentsServices.NarrativeWriterService;
+import com.example.portal.agents.iconix.service.agentservices.NarrativeWriterService;
+import com.example.portal.agents.iconix.worker.Worker;
+import com.example.portal.shared.service.OpenAiRagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
-@Component
+// @Component - отключено, используется версия из com.example.portal.agents.iconix.worker
 @RequiredArgsConstructor
 public class NarrativeWorker implements Worker {
 

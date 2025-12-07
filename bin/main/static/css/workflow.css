@@ -193,6 +193,12 @@ body {
     font-size: 14px;
 }
 
+.field-header-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .copy-btn {
     padding: 6px 12px;
     background: #667eea;
@@ -206,6 +212,32 @@ body {
 
 .copy-btn:hover {
     background: #5568d3;
+}
+
+.btn-view-diagram {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: #667eea;
+    color: white;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.btn-view-diagram:hover:not(:disabled) {
+    background: #5568d3;
+    border-color: #5568d3;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.btn-view-diagram:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #ccc;
+    border-color: #ccc;
 }
 
 .output-field {

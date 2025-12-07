@@ -1,11 +1,12 @@
 package com.example.workflow;
 
-import org.springframework.stereotype.Component;
+import com.example.portal.agents.iconix.exception.PauseForUserReviewException;
+import com.example.portal.agents.iconix.worker.Worker;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@Component
+// @Component - отключено, используется версия из com.example.portal.agents.iconix.worker
 public class UserReviewWorker implements Worker {
     
     @Override
@@ -39,7 +40,7 @@ public class UserReviewWorker implements Worker {
         String reviewDataJson = new com.fasterxml.jackson.databind.ObjectMapper()
                 .writeValueAsString(reviewData);
         
-        throw new PauseForUserReviewException(ctx.requestId, reviewDataJson, 
+        throw new com.example.portal.agents.iconix.exception.PauseForUserReviewException(ctx.requestId, reviewDataJson, 
                 "Workflow paused for user review. Please review and provide feedback.");
     }
 }
