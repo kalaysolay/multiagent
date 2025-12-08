@@ -4,7 +4,7 @@ server:
 spring:
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY: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}
+      api-key: ${OPENAI_API_KEY}
       chat:
         options:
           model: gpt-3.5-turbo

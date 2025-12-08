@@ -81,6 +81,61 @@ public class WorkflowSessionService {
                 .collect(java.util.stream.Collectors.toList());
     }
     
+    /**
+     * Получить данные сессии в формате WorkflowResponse для отображения на фронтенде.
+     */
+    @Transactional(readOnly = true)
+    public com.example.portal.agents.iconix.model.WorkflowResponse getSessionData(String requestId) {
+        WorkflowSession session = loadSession(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requestId));
+        
+        // Восстанавливаем контекст и план
+        Worker.Context ctx = restoreContext(session);
+        com.example.portal.agents.iconix.model.OrchestratorPlan plan = restorePlan(session);
+        
+        // Строим artifacts из state
+        Map<String, Object> artifacts = new LinkedHashMap<>();
+        artifacts.put("narrative", ctx.narrativeEffective());
+        if (ctx.state.containsKey("plantuml")) {
+            artifacts.put("plantuml", ctx.state.get("plantuml"));
+        }
+        if (ctx.state.containsKey("issues")) {
+            artifacts.put("issues", ctx.state.get("issues"));
+        }
+        if (ctx.state.containsKey("narrativeIssues")) {
+            artifacts.put("narrativeIssues", ctx.state.get("narrativeIssues"));
+        }
+        if (ctx.state.containsKey("useCaseModel")) {
+            artifacts.put("useCaseModel", ctx.state.get("useCaseModel"));
+        }
+        if (ctx.state.containsKey("mvcDiagram")) {
+            artifacts.put("mvcDiagram", ctx.state.get("mvcDiagram"));
+        }
+        
+        // Добавляем статус в artifacts для фронтенда
+        artifacts.put("_status", session.getStatus().toString());
+        
+        // Если есть данные для ревью, добавляем их
+        if (session.getUserReviewData() != null && !session.getUserReviewData().isBlank()) {
+            try {
+                Map<String, Object> reviewData = objectMapper.readValue(
+                        session.getUserReviewData(), 
+                        new TypeReference<Map<String, Object>>() {}
+                );
+                artifacts.put("_reviewData", reviewData);
+            } catch (Exception e) {
+                log.warn("Failed to parse user review data for session: {}", requestId, e);
+            }
+        }
+        
+        return new com.example.portal.agents.iconix.model.WorkflowResponse(
+                session.getRequestId(),
+                plan,
+                artifacts,
+                ctx.logs
+        );
+    }
+    
     public Worker.Context restoreContext(WorkflowSession session) {
         try {
             var ctx = new Worker.Context(

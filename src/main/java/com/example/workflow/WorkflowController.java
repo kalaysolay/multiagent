@@ -48,4 +48,9 @@ public class WorkflowController {
     public java.util.List<WorkflowSessionSummary> getAllSessions() {
         return sessionService.getAllSessions();
     }
+    
+    @GetMapping("/session/{requestId}")
+    public WorkflowResponse getSession(@PathVariable String requestId) {
+        return sessionService.getSessionData(requestId);
+    }
 }

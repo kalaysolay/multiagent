@@ -25,10 +25,10 @@ public class AiConfig {
      * ChatClient для OpenAI (используется по умолчанию или когда app.llm-provider=OPENAI).
      * Spring AI автоматически создает ChatModel из конфигурации spring.ai.openai
      */
-    @Bean
+    @Bean(name = "chatClient")
     @Primary
     @ConditionalOnProperty(name = "app.llm-provider", havingValue = "OPENAI", matchIfMissing = true)
-    public ChatClient chatClient(ChatClient.Builder builder) {
+    public ChatClient openAiChatClient(ChatClient.Builder builder) {
         log.info("Configuring ChatClient for OpenAI");
         return builder.build();
     }
@@ -66,10 +66,10 @@ public class AiConfig {
      * ChatClient для DeepSeek (используется когда app.llm-provider=DEEPSEEK).
      * Использует настроенный DeepSeek ChatModel.
      */
-    @Bean
+    @Bean(name = "chatClient")
     @Primary
     @ConditionalOnProperty(name = "app.llm-provider", havingValue = "DEEPSEEK")
-    public ChatClient chatClient(
+    public ChatClient deepSeekChatClient(
             @Qualifier("deepSeekChatModel") OpenAiChatModel chatModel
     ) {
         log.info("Configuring ChatClient for DeepSeek");

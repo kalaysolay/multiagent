@@ -35,6 +35,9 @@ dependencies {
     
     // PlantUML для рендеринга диаграмм
     implementation("net.sourceforge.plantuml:plantuml:1.2024.5")
+    
+    // JGit для работы с Git репозиториями
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
 
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")

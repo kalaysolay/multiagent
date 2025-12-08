@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Analyser Agent</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <link rel="stylesheet" href="/css/git-analyser.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Боковое меню -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Портал аналитика</h2>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <!-- Раздел Документация -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Документация</div>
+                    <ul class="menu-items">
+                        <li><a href="/index.html" class="menu-item">User Story</a></li>
+                        <li><a href="/index.html" class="menu-item">Требования</a></li>
+                        <li><a href="/index.html" class="menu-item">Статьи</a></li>
+                        <li><a href="/render.html" class="menu-item">Рендерер PUML</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Раздел Агенты -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Агенты</div>
+                    <ul class="menu-items">
+                        <li><a href="/iconix-agent-list.html" class="menu-item">ICONIX Agent</a></li>
+                        <li><a href="#" class="menu-item">Анализатор требований</a></li>
+                        <li><a href="#" class="menu-item">Jira Agent</a></li>
+                        <li><a href="/git-analyser.html" class="menu-item active">Git Analyser Agent</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Раздел Чаты -->
+                <div class="menu-section">
+                    <div class="menu-section-title">Чаты</div>
+                    <ul class="menu-items">
+                        <li><a href="/chat.html" class="menu-item">Chat with LLM</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Git Analyser Agent</h1>
+                <p>Анализ Git репозитория: поиск неиспользуемых файлов и битых ссылок</p>
+            </div>
+
+            <div class="git-analyser-container">
+                <!-- Форма ввода -->
+                <div class="input-section">
+                    <div class="form-group">
+                        <label for="repositoryUrl">URL репозитория:</label>
+                        <input 
+                            type="text" 
+                            id="repositoryUrl" 
+                            placeholder="https://github.com/user/repo.git"
+                            class="form-input"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="branch">Ветка:</label>
+                        <input 
+                            type="text" 
+                            id="branch" 
+                            placeholder="main"
+                            value="main"
+                            class="form-input"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="accessToken">Access Token (опционально):</label>
+                        <input 
+                            type="password" 
+                            id="accessToken" 
+                            placeholder="Для приватных репозиториев"
+                            class="form-input"
+                        />
+                    </div>
+
+                    <button id="analyzeButton" class="btn btn-primary">
+                        <span class="btn-text">Запустить анализ</span>
+                        <span class="btn-loader" style="display: none;">
+                            <span class="spinner"></span>
+                            Анализ...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Результаты -->
+                <div id="resultsSection" class="results-section" style="display: none;">
+                    <div class="results-header">
+                        <h2>Результаты анализа</h2>
+                        <div class="results-summary">
+                            <div class="summary-item">
+                                <span class="summary-label">Всего файлов:</span>
+                                <span id="totalFiles" class="summary-value">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Проанализировано:</span>
+                                <span id="analyzedFiles" class="summary-value">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Неиспользуемых:</span>
+                                <span id="unusedCount" class="summary-value">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-label">Битых ссылок:</span>
+                                <span id="brokenCount" class="summary-value">0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Неиспользуемые файлы -->
+                    <div class="results-panel">
+                        <h3>Неиспользуемые файлы</h3>
+                        <div id="unusedFilesList" class="files-list"></div>
+                    </div>
+
+                    <!-- Битые ссылки -->
+                    <div class="results-panel">
+                        <h3>Битые ссылки</h3>
+                        <div id="brokenReferencesList" class="references-list"></div>
+                    </div>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/git-analyser.js"></script>
+</body>
+</html>
+

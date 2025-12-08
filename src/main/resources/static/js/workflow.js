@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSessionFromUrl();
 });
 
-function loadSessionFromUrl() {
+async function loadSessionFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const requestId = urlParams.get('requestId');
     
@@ -17,7 +17,82 @@ function loadSessionFromUrl() {
         currentRequestId = requestId;
         document.getElementById('sessionId').textContent = requestId;
         document.getElementById('sessionInfo').style.display = 'block';
-        // Можно загрузить данные сессии, если нужно
+        
+        // Загружаем данные сессии
+        try {
+            const response = await fetch(`${API_BASE}/session/${requestId}`);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    showStatus('Сессия не найдена', 'error');
+                    return;
+                }
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Заполняем поля данными из сессии
+            if (data.artifacts) {
+                // Заполняем поле ввода нарратива
+                if (data.artifacts.narrative) {
+                    document.getElementById('narrativeInput').value = cleanText(data.artifacts.narrative);
+                }
+                
+                // Заполняем поля результатов
+                if (data.artifacts.narrative) {
+                    document.getElementById('narrativeOutput').value = cleanText(data.artifacts.narrative);
+                }
+                
+                if (data.artifacts.plantuml) {
+                    document.getElementById('domainOutput').value = cleanText(data.artifacts.plantuml);
+                }
+                
+                if (data.artifacts.useCaseModel) {
+                    document.getElementById('usecaseOutput').value = cleanText(data.artifacts.useCaseModel);
+                }
+                
+                if (data.artifacts.mvcDiagram) {
+                    document.getElementById('mvcOutput').value = cleanText(data.artifacts.mvcDiagram);
+                }
+                
+                // Проверяем статус
+                const status = data.artifacts._status;
+                isPausedForReview = status === 'PAUSED_FOR_REVIEW';
+                
+                if (isPausedForReview) {
+                    showStatus('Сессия ожидает вашего подтверждения. Отредактируйте поля и нажмите "Отправить обновления"', 'info');
+                    document.getElementById('resumeButton').style.display = 'block';
+                    
+                    // Если есть данные для ревью, заполняем поля
+                    if (data.artifacts._reviewData) {
+                        const reviewData = data.artifacts._reviewData;
+                        if (reviewData.narrative) {
+                            document.getElementById('narrativeOutput').value = cleanText(reviewData.narrative);
+                        }
+                        if (reviewData.domainModel) {
+                            document.getElementById('domainOutput').value = cleanText(reviewData.domainModel);
+                        }
+                    }
+                } else {
+                    document.getElementById('resumeButton').style.display = 'none';
+                    if (status === 'COMPLETED') {
+                        showStatus('Workflow завершен', 'success');
+                    } else if (status === 'FAILED') {
+                        showStatus('Workflow завершился с ошибкой', 'error');
+                    } else if (status === 'RUNNING') {
+                        showStatus('Workflow выполняется...', 'info');
+                    }
+                }
+            }
+            
+            // Обновляем состояние кнопок просмотра диаграмм
+            updateViewDiagramButtons();
+            
+        } catch (error) {
+            console.error('Error loading session:', error);
+            showStatus(`Ошибка загрузки сессии: ${error.message}`, 'error');
+        }
     }
 }
 
@@ -48,6 +123,21 @@ function initEventListeners() {
             }
         }
     });
+    
+    // Отслеживание изменений в полях PlantUML для активации/деактивации кнопок
+    const domainField = document.getElementById('domainOutput');
+    const usecaseField = document.getElementById('usecaseOutput');
+    const mvcField = document.getElementById('mvcOutput');
+    
+    if (domainField) {
+        domainField.addEventListener('input', updateViewDiagramButtons);
+    }
+    if (usecaseField) {
+        usecaseField.addEventListener('input', updateViewDiagramButtons);
+    }
+    if (mvcField) {
+        mvcField.addEventListener('input', updateViewDiagramButtons);
+    }
 }
 
 function switchTab(tabName) {
