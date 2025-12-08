@@ -4,6 +4,7 @@ let chatHistory = [];
 document.addEventListener('DOMContentLoaded', function() {
     initChatModeSwitcher();
     initChatInput();
+    loadChatHistory();
 });
 
 function initChatModeSwitcher() {
@@ -84,7 +85,42 @@ async function sendMessage() {
     }
 }
 
+async function loadChatHistory() {
+    try {
+        const response = await fetch('/api/chat/history');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.messages && data.messages.length > 0) {
+            // Очищаем контейнер сообщений
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.innerHTML = '';
+            
+            // Добавляем сообщения из истории
+            data.messages.forEach(msg => {
+                addMessageFromHistory(msg.role, msg.content, msg.timestamp);
+                // Обновляем историю для контекста
+                chatHistory.push({ role: msg.role, content: msg.content });
+            });
+            
+            // Прокручиваем вниз
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+        // Не показываем ошибку пользователю, просто не загружаем историю
+    }
+}
+
 function addMessage(role, content) {
+    addMessageFromHistory(role, content, new Date().toISOString());
+}
+
+function addMessageFromHistory(role, content, timestamp) {
     const messagesContainer = document.getElementById('chatMessages');
     
     // Удаляем системное сообщение, если есть
@@ -102,7 +138,14 @@ function addMessage(role, content) {
     
     const timeSpan = document.createElement('span');
     timeSpan.className = 'message-time';
-    timeSpan.textContent = new Date().toLocaleTimeString('ru-RU');
+    
+    // Форматируем время
+    if (timestamp) {
+        const date = new Date(timestamp);
+        timeSpan.textContent = date.toLocaleTimeString('ru-RU');
+    } else {
+        timeSpan.textContent = new Date().toLocaleTimeString('ru-RU');
+    }
     
     messageDiv.appendChild(contentP);
     messageDiv.appendChild(timeSpan);
