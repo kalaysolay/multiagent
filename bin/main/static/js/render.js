@@ -49,13 +49,42 @@ function initEventListeners() {
     document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
 }
 
+/**
+ * Очищает PlantUML код от markdown блоков и исправляет экранирование
+ */
+function cleanPlantUmlCode(code) {
+    if (!code) return '';
+    
+    let cleaned = String(code);
+    
+    // Убираем markdown блоки для PlantUML
+    // Удаляем ```plantuml или ```puml в начале
+    cleaned = cleaned.replace(/^```(?:plantuml|puml|uml)\s*/i, '');
+    // Удаляем ``` в конце
+    cleaned = cleaned.replace(/```\s*$/i, '');
+    // Удаляем ``` в начале и конце (если остались)
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    
+    // Исправляем двойные фигурные скобки {{ на одинарные {
+    cleaned = cleaned.replace(/\{\{/g, '{');
+    cleaned = cleaned.replace(/\}\}/g, '}');
+    
+    // Убираем лишние пробелы в начале/конце строк
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+}
+
 async function renderDiagram() {
-    const plantUmlCode = document.getElementById('plantUmlInput').value.trim();
+    let plantUmlCode = document.getElementById('plantUmlInput').value.trim();
     
     if (!plantUmlCode) {
         showStatus('Пожалуйста, введите код PlantUML', 'error');
         return;
     }
+    
+    // Очищаем PlantUML код перед рендерингом
+    plantUmlCode = cleanPlantUmlCode(plantUmlCode);
     
     const renderBtn = document.getElementById('renderButton');
     const btnText = renderBtn.querySelector('.btn-text');
@@ -123,12 +152,15 @@ async function renderDiagram() {
 }
 
 async function validatePlantUml() {
-    const plantUmlCode = document.getElementById('plantUmlInput').value.trim();
+    let plantUmlCode = document.getElementById('plantUmlInput').value.trim();
     
     if (!plantUmlCode) {
         showStatus('Пожалуйста, введите код PlantUML', 'error');
         return;
     }
+    
+    // Очищаем PlantUML код перед валидацией
+    plantUmlCode = cleanPlantUmlCode(plantUmlCode);
     
     const validateBtn = document.getElementById('validateButton');
     const validationResult = document.getElementById('validationResult');

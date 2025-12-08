@@ -175,12 +175,42 @@ function updateButtonState(button, textarea) {
     }
 }
 
+/**
+ * Очищает PlantUML код от markdown блоков и исправляет экранирование
+ */
+function cleanPlantUmlCode(code) {
+    if (!code) return '';
+    
+    let cleaned = String(code);
+    
+    // Убираем markdown блоки для PlantUML
+    // Удаляем ```plantuml или ```puml в начале
+    cleaned = cleaned.replace(/^```(?:plantuml|puml|uml)\s*/i, '');
+    // Удаляем ``` в конце
+    cleaned = cleaned.replace(/```\s*$/i, '');
+    // Удаляем ``` в начале и конце (если остались)
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    
+    // Исправляем двойные фигурные скобки {{ на одинарные {
+    cleaned = cleaned.replace(/\{\{/g, '{');
+    cleaned = cleaned.replace(/\}\}/g, '}');
+    
+    // Убираем лишние пробелы в начале/конце строк
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+}
+
 // Делаем функцию доступной глобально
 window.renderAndShowDiagram = async function renderAndShowDiagram(plantUmlCode, title) {
     console.log('renderAndShowDiagram called with title:', title, 'code length:', plantUmlCode?.length);
     if (!plantUmlCode) {
         return;
     }
+    
+    // Очищаем PlantUML код перед рендерингом
+    plantUmlCode = cleanPlantUmlCode(plantUmlCode);
+    console.log('Cleaned PlantUML code length:', plantUmlCode.length);
     
     const modal = document.getElementById('diagramModal');
     const modalHeader = modal.querySelector('.modal-header h2');

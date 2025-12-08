@@ -378,6 +378,18 @@ function cleanText(text) {
     // Убираем двойные экранирования
     cleaned = cleaned.replace(/\\\\/g, '\\');
     
+    // Убираем markdown блоки для PlantUML
+    // Удаляем ```plantuml или ```puml в начале
+    cleaned = cleaned.replace(/^```(?:plantuml|puml|uml)\s*/i, '');
+    // Удаляем ``` в конце
+    cleaned = cleaned.replace(/```\s*$/i, '');
+    // Удаляем ``` в начале и конце (если остались)
+    cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    
+    // Исправляем двойные фигурные скобки {{ на одинарные {
+    cleaned = cleaned.replace(/\{\{/g, '{');
+    cleaned = cleaned.replace(/\}\}/g, '}');
+    
     // Убираем лишние пробелы в начале/конце строк
     cleaned = cleaned.trim();
     
