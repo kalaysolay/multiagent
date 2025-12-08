@@ -89,10 +89,34 @@ async function loadSessionFromUrl() {
             // Обновляем состояние кнопок просмотра диаграмм
             updateViewDiagramButtons();
             
+            // Убеждаемся, что обработчики кликов установлены (если они еще не установлены)
+            // Это нужно, если diagram-modal.js загрузился раньше, чем данные
+            ensureDiagramButtonHandlers();
+            
         } catch (error) {
             console.error('Error loading session:', error);
             showStatus(`Ошибка загрузки сессии: ${error.message}`, 'error');
         }
+    }
+}
+
+/**
+ * Убеждается, что обработчики кликов для кнопок просмотра диаграмм установлены.
+ * Вызывается после загрузки данных, чтобы гарантировать работу кнопок.
+ */
+function ensureDiagramButtonHandlers() {
+    console.log('Ensuring diagram button handlers are set up...');
+    
+    // Обновляем состояние кнопок
+    updateViewDiagramButtons();
+    
+    // Переинициализируем обработчики, если они еще не установлены или были потеряны
+    // Это гарантирует, что обработчики работают даже после динамической загрузки данных
+    if (typeof initViewDiagramButtons === 'function') {
+        console.log('Re-initializing view diagram buttons...');
+        initViewDiagramButtons();
+    } else {
+        console.warn('initViewDiagramButtons function not found');
     }
 }
 
@@ -302,6 +326,9 @@ function handleResponse(data) {
     // Обновляем состояние кнопок просмотра диаграмм
     updateViewDiagramButtons();
     
+    // Убеждаемся, что обработчики кликов установлены
+    ensureDiagramButtonHandlers();
+    
     // Переключаемся на первую вкладку с данными
     if (data.artifacts?.narrative) {
         switchTab('narrative');
@@ -311,23 +338,30 @@ function handleResponse(data) {
 }
 
 function updateViewDiagramButtons() {
+    console.log('Updating view diagram buttons state...');
     // Обновляем состояние кнопок на основе содержимого полей
     const domainBtn = document.getElementById('viewDomainDiagram');
     const domainField = document.getElementById('domainOutput');
     if (domainBtn && domainField) {
-        domainBtn.disabled = !domainField.value.trim();
+        const hasContent = domainField.value.trim().length > 0;
+        domainBtn.disabled = !hasContent;
+        console.log('Domain button disabled:', !hasContent, 'Content length:', domainField.value.trim().length);
     }
     
     const usecaseBtn = document.getElementById('viewUseCaseDiagram');
     const usecaseField = document.getElementById('usecaseOutput');
     if (usecaseBtn && usecaseField) {
-        usecaseBtn.disabled = !usecaseField.value.trim();
+        const hasContent = usecaseField.value.trim().length > 0;
+        usecaseBtn.disabled = !hasContent;
+        console.log('UseCase button disabled:', !hasContent, 'Content length:', usecaseField.value.trim().length);
     }
     
     const mvcBtn = document.getElementById('viewMvcDiagram');
     const mvcField = document.getElementById('mvcOutput');
     if (mvcBtn && mvcField) {
-        mvcBtn.disabled = !mvcField.value.trim();
+        const hasContent = mvcField.value.trim().length > 0;
+        mvcBtn.disabled = !hasContent;
+        console.log('MVC button disabled:', !hasContent, 'Content length:', mvcField.value.trim().length);
     }
 }
 

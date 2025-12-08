@@ -1,4 +1,4 @@
-const API_BASE = '/render';
+const RENDER_API_BASE = '/render';
 
 let currentImageData = null;
 let currentSvgData = null;
@@ -8,8 +8,14 @@ let isFullscreen = false;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Diagram modal: DOMContentLoaded');
     initDiagramModalListeners();
-    initViewDiagramButtons();
+    // Задержка для инициализации кнопок, чтобы убедиться, что все элементы загружены
+    setTimeout(() => {
+        if (window.initViewDiagramButtons) {
+            window.initViewDiagramButtons();
+        }
+    }, 100);
 });
 
 function initDiagramModalListeners() {
@@ -58,12 +64,16 @@ function initDiagramModalListeners() {
     if (fullscreen) fullscreen.addEventListener('click', toggleFullscreen);
 }
 
-function initViewDiagramButtons() {
+// Делаем функцию доступной глобально
+window.initViewDiagramButtons = function initViewDiagramButtons() {
+    console.log('Initializing view diagram buttons...');
+    
     // Кнопка для доменной модели
     const viewDomainBtn = document.getElementById('viewDomainDiagram');
     const domainOutput = document.getElementById('domainOutput');
     
     if (viewDomainBtn && domainOutput) {
+        console.log('Setting up domain diagram button');
         // Проверка при загрузке
         updateButtonState(viewDomainBtn, domainOutput);
         
@@ -72,9 +82,27 @@ function initViewDiagramButtons() {
             updateButtonState(viewDomainBtn, domainOutput);
         });
         
-        viewDomainBtn.addEventListener('click', () => {
-            renderAndShowDiagram(domainOutput.value.trim(), 'Доменная модель');
+        // Удаляем старые обработчики, если есть
+        const newDomainBtn = viewDomainBtn.cloneNode(true);
+        viewDomainBtn.parentNode.replaceChild(newDomainBtn, viewDomainBtn);
+        
+        newDomainBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const plantUmlCode = domainOutput.value.trim();
+            console.log('Domain diagram button clicked, code length:', plantUmlCode.length);
+            if (plantUmlCode) {
+                if (window.renderAndShowDiagram) {
+                    window.renderAndShowDiagram(plantUmlCode, 'Доменная модель');
+                } else {
+                    console.error('renderAndShowDiagram not found on window');
+                }
+            } else {
+                console.warn('No PlantUML code in domainOutput');
+            }
         });
+    } else {
+        console.warn('Domain button or output field not found');
     }
     
     // Кнопка для диаграммы прецедентов
@@ -82,13 +110,27 @@ function initViewDiagramButtons() {
     const usecaseOutput = document.getElementById('usecaseOutput');
     
     if (viewUseCaseBtn && usecaseOutput) {
+        console.log('Setting up usecase diagram button');
         updateButtonState(viewUseCaseBtn, usecaseOutput);
         usecaseOutput.addEventListener('input', () => {
             updateButtonState(viewUseCaseBtn, usecaseOutput);
         });
         
-        viewUseCaseBtn.addEventListener('click', () => {
-            renderAndShowDiagram(usecaseOutput.value.trim(), 'Диаграмма прецедентов');
+        const newUseCaseBtn = viewUseCaseBtn.cloneNode(true);
+        viewUseCaseBtn.parentNode.replaceChild(newUseCaseBtn, viewUseCaseBtn);
+        
+        newUseCaseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const plantUmlCode = usecaseOutput.value.trim();
+            console.log('UseCase diagram button clicked, code length:', plantUmlCode.length);
+            if (plantUmlCode) {
+                if (window.renderAndShowDiagram) {
+                    window.renderAndShowDiagram(plantUmlCode, 'Диаграмма прецедентов');
+                } else {
+                    console.error('renderAndShowDiagram not found on window');
+                }
+            }
         });
     }
     
@@ -97,23 +139,45 @@ function initViewDiagramButtons() {
     const mvcOutput = document.getElementById('mvcOutput');
     
     if (viewMvcBtn && mvcOutput) {
+        console.log('Setting up MVC diagram button');
         updateButtonState(viewMvcBtn, mvcOutput);
         mvcOutput.addEventListener('input', () => {
             updateButtonState(viewMvcBtn, mvcOutput);
         });
         
-        viewMvcBtn.addEventListener('click', () => {
-            renderAndShowDiagram(mvcOutput.value.trim(), 'MVC модель');
+        const newMvcBtn = viewMvcBtn.cloneNode(true);
+        viewMvcBtn.parentNode.replaceChild(newMvcBtn, viewMvcBtn);
+        
+        newMvcBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const plantUmlCode = mvcOutput.value.trim();
+            console.log('MVC diagram button clicked, code length:', plantUmlCode.length);
+            if (plantUmlCode) {
+                if (window.renderAndShowDiagram) {
+                    window.renderAndShowDiagram(plantUmlCode, 'MVC модель');
+                } else {
+                    console.error('renderAndShowDiagram not found on window');
+                }
+            }
         });
     }
-}
+    
+    console.log('View diagram buttons initialized');
+};
 
 function updateButtonState(button, textarea) {
     const hasContent = textarea.value.trim().length > 0;
     button.disabled = !hasContent;
+    // Помечаем кнопку, что обработчик установлен
+    if (!button.hasAttribute('data-handler-attached')) {
+        button.setAttribute('data-handler-attached', 'true');
+    }
 }
 
-async function renderAndShowDiagram(plantUmlCode, title) {
+// Делаем функцию доступной глобально
+window.renderAndShowDiagram = async function renderAndShowDiagram(plantUmlCode, title) {
+    console.log('renderAndShowDiagram called with title:', title, 'code length:', plantUmlCode?.length);
     if (!plantUmlCode) {
         return;
     }
@@ -133,7 +197,7 @@ async function renderAndShowDiagram(plantUmlCode, title) {
     
     try {
         // Рендерим в PNG
-        const response = await fetch(`${API_BASE}/png`, {
+        const response = await fetch(`${RENDER_API_BASE}/png`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -157,7 +221,7 @@ async function renderAndShowDiagram(plantUmlCode, title) {
         
         // Также получаем SVG для скачивания
         try {
-            const svgResponse = await fetch(`${API_BASE}/svg`, {
+            const svgResponse = await fetch(`${RENDER_API_BASE}/svg`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
