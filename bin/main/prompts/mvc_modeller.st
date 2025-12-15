@@ -53,41 +53,6 @@ control -- entity (если прецедент описывает взаимод
 Frontend должен быть связан с граничным элементом boundary
 все boundary в отношениях ставь слева "boundary -- " кроме отношений с актором
 
-== Пример хорошей mvc модели
-
-@startuml mvc_openStorageSection
-' Header
-    title Перейти в раздел Хранилище
-    skinparam WrapWidth 200
-    left to right direction
-    skinparam actor {
-        actorStyle awesome << user >>
-    }
-
-' Actors
-    actor "Редактор статей и новостей" as editor << user >>
-
-' Boundaries - GUI
-    boundary "Центр администрирования" as adminCenter
-        editor -- adminCenter
-    boundary "Содержимое папки" as folderContent
-        editor -- folderContent
-
-' Controls - контроллеры
-    control "Открыть раздел Хранилище" as openStorageSection << Frontend >>
-        adminCenter -- openStorageSection
-    control "Выбрать содержимое папки" as selectFolderContent << Backend >>
-        openStorageSection -- selectFolderContent
-    control "Отобразить содержимое папки" as displayFolderContent << Frontend >>
-        selectFolderContent -- displayFolderContent
-        folderContent -- displayFolderContent
-
-' Entities - пассивные классы
-    entity "Папки" as folders
-        selectFolderContent -- folders
-    entity "Файлы" as files
-        selectFolderContent -- files
-@enduml
 
 == Структура вывода
 

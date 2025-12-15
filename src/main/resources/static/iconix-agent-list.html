@@ -6,6 +6,7 @@
     <title>ICONIX Agent - Список агентов</title>
     <link rel="stylesheet" href="/css/portal.css">
     <link rel="stylesheet" href="/css/agent-list.css">
+    <link rel="stylesheet" href="/css/workflow.css">
 </head>
 <body>
     <div class="app-container">
@@ -53,6 +54,28 @@
             <div class="content-header">
                 <h1>ICONIX Agent</h1>
                 <p>Список запущенных агентов</p>
+            </div>
+            
+            <!-- Форма для создания нового запроса -->
+            <div class="new-request-section">
+                <div class="new-request-card">
+                    <h3>Создать новый запрос</h3>
+                    <div class="new-request-form">
+                        <label for="newNarrativeInput">Нарратив / Запрос:</label>
+                        <textarea 
+                            id="newNarrativeInput" 
+                            placeholder="Введите описание задачи или нарратив..."
+                            rows="4"
+                        ></textarea>
+                        <button id="createRequestButton" class="btn btn-primary">
+                            <span class="btn-text">Создать запрос</span>
+                            <span class="btn-loader" style="display: none;">
+                                <span class="spinner"></span>
+                                Создание...
+                            </span>
+                        </button>
+                    </div>
+                </div>
             </div>
             
             <div class="table-container">

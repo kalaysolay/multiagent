@@ -2,7 +2,76 @@ const API_BASE = '/workflow';
 
 document.addEventListener('DOMContentLoaded', function() {
     loadAgents();
+    initNewRequestForm();
 });
+
+function initNewRequestForm() {
+    const createButton = document.getElementById('createRequestButton');
+    const narrativeInput = document.getElementById('newNarrativeInput');
+    
+    if (createButton) {
+        createButton.addEventListener('click', createNewRequest);
+    }
+    
+    // Отправка по Ctrl+Enter
+    if (narrativeInput) {
+        narrativeInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                createNewRequest();
+            }
+        });
+    }
+}
+
+async function createNewRequest() {
+    const narrativeInput = document.getElementById('newNarrativeInput');
+    const narrative = narrativeInput.value.trim();
+    
+    if (!narrative) {
+        alert('Пожалуйста, введите нарратив');
+        return;
+    }
+    
+    const createBtn = document.getElementById('createRequestButton');
+    const btnText = createBtn.querySelector('.btn-text');
+    const btnLoader = createBtn.querySelector('.btn-loader');
+    
+    // Показываем loader
+    createBtn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'flex';
+    
+    try {
+        const response = await fetch(`${API_BASE}/run`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                narrative: narrative,
+                goal: '',
+                task: ''
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Перенаправляем на страницу деталей с новым requestId
+        window.location.href = `/iconix-agent-detail.html?requestId=${data.requestId}`;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert(`Ошибка при создании запроса: ${error.message}`);
+    } finally {
+        createBtn.disabled = false;
+        btnText.style.display = 'block';
+        btnLoader.style.display = 'none';
+    }
+}
 
 async function loadAgents() {
     const tbody = document.getElementById('agentsTableBody');

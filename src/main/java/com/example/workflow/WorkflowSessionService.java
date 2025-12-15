@@ -112,6 +112,12 @@ public class WorkflowSessionService {
             artifacts.put("mvcDiagram", ctx.state.get("mvcDiagram"));
         }
         
+        // Добавляем сценарии из state (если есть)
+        if (ctx.state.containsKey("scenario")) {
+            List<String> scenarios = List.of((String) ctx.state.get("scenario"));
+            artifacts.put("scenarios", scenarios);
+        }
+        
         // Добавляем статус в artifacts для фронтенда
         artifacts.put("_status", session.getStatus().toString());
         

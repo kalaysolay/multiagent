@@ -58,7 +58,7 @@ public class OrchestratorService {
         } else {
             plan = buildDefaultPlan();
             ctx.log("plan.default: narrative→model→review→refine→userReview→usecase→mvc");
-            log.info("Используем стандартный план: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC.");
+            log.info("Используем стандартный план: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC → Scenario.");
         }
 
         ctx.log("plan: " + plan.plan().size() + " steps");
@@ -172,6 +172,13 @@ public class OrchestratorService {
         if (ctx.state.containsKey("narrativeIssues")) artifacts.put("narrativeIssues", ctx.state.get("narrativeIssues"));
         if (ctx.state.containsKey("useCaseModel")) artifacts.put("useCaseModel", ctx.state.get("useCaseModel"));
         if (ctx.state.containsKey("mvcDiagram")) artifacts.put("mvcDiagram", ctx.state.get("mvcDiagram"));
+        
+        // Добавляем сценарии как массив (пока один сценарий)
+        if (ctx.state.containsKey("scenario")) {
+            List<String> scenarios = List.of((String) ctx.state.get("scenario"));
+            artifacts.put("scenarios", scenarios);
+        }
+        
         return artifacts;
     }
 
@@ -183,10 +190,11 @@ public class OrchestratorService {
                 new PlanStep("model", Map.of("mode", "refine")),
                 new PlanStep("userReview", Map.of()), // Пауза для пользовательского ревью
                 new PlanStep("usecase", Map.of()),
-                new PlanStep("mvc", Map.of())
+                new PlanStep("mvc", Map.of()),
+                new PlanStep("scenario", Map.of())
         );
         return new OrchestratorPlan(
-                "Стандартный мультиагентский цикл: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC.",
+                "Стандартный мультиагентский цикл: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC → Scenario.",
                 steps
         );
     }
