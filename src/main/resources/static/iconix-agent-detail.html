@@ -211,23 +211,40 @@
 
             <!-- Секция декомпозиции Use Case -->
             <div class="usecase-decomposition-section" id="usecaseDecompositionSection" style="display: none;">
-                <div class="decomposition-card">
-                    <h3>Декомпозиция Use Case</h3>
-                    <div class="decomposition-content">
-                        <div class="usecase-list-container">
-                            <label>Выберите Use Case для декомпозиции:</label>
-                            <div id="usecaseList" class="usecase-list">
-                                <!-- Список Use Case будет добавлен динамически -->
+                <div class="decomposition-container">
+                    <!-- Левый контейнер: Use Case -->
+                    <div class="decomposition-left">
+                        <div class="decomposition-card">
+                            <h3>Декомпозиция Use Case</h3>
+                            <div class="decomposition-content">
+                                <div class="usecase-list-container">
+                                    <label>Выберите Use Case для декомпозиции:</label>
+                                    <div id="usecaseList" class="usecase-list">
+                                        <!-- Список Use Case будет добавлен динамически -->
+                                    </div>
+                                </div>
+                                <div class="decomposition-actions">
+                                    <button id="decomposeButton" class="btn btn-primary" disabled>
+                                        <span class="btn-text">Декомпозировать</span>
+                                        <span class="btn-loader" style="display: none;">
+                                            <span class="spinner"></span>
+                                            Декомпозиция...
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <div class="decomposition-actions">
-                            <button id="decomposeButton" class="btn btn-primary" disabled>
-                                <span class="btn-text">Декомпозировать</span>
-                                <span class="btn-loader" style="display: none;">
-                                    <span class="spinner"></span>
-                                    Декомпозиция...
-                                </span>
-                            </button>
+                    </div>
+                    
+                    <!-- Правый контейнер: Декомпозированные сценарии -->
+                    <div class="decomposition-right">
+                        <div class="decomposition-card">
+                            <h3>Декомпозированные сценарии</h3>
+                            <div id="scenariosContainer" class="scenarios-container">
+                                <div class="scenarios-empty">
+                                    <p>Выберите Use Case и нажмите "Декомпозировать" для генерации сценариев</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -275,8 +292,29 @@
         </div>
     </div>
 
+    <!-- Модальное окно для отображения AsciiDoc документа -->
+    <div id="documentModal" class="modal" style="display: none;">
+        <div class="modal-content document-modal-content">
+            <div class="modal-header">
+                <h2>Документ Use Case</h2>
+                <button class="modal-close" id="closeDocumentModal">&times;</button>
+            </div>
+            <div class="modal-body document-modal-body">
+                <div id="documentContainer">
+                    <!-- Здесь будет отображен отрендеренный HTML документ -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-right">
+                    <button id="downloadDocument" class="btn btn-primary">Скачать HTML</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/workflow.js"></script>
     <script src="/js/diagram-modal.js"></script>
+    <script src="/js/document-modal.js"></script>
 </body>
 </html>
 

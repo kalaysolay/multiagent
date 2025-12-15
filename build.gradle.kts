@@ -36,6 +36,9 @@ dependencies {
     // PlantUML для рендеринга диаграмм
     implementation("net.sourceforge.plantuml:plantuml:1.2024.5")
     
+    // Asciidoctor для рендеринга AsciiDoc в HTML
+    implementation("org.asciidoctor:asciidoctorj:2.5.10")
+    
     // JGit для работы с Git репозиториями
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
 

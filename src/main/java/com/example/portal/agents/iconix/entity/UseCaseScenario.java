@@ -25,6 +25,12 @@ public class UseCaseScenario {
     @Column(name = "request_id", length = 36, nullable = false)
     private String requestId;
     
+    @Column(name = "use_case_alias", length = 255)
+    private String useCaseAlias; // Алиас Use Case (например, "reviewGiftByOfficer")
+    
+    @Column(name = "use_case_name", length = 500)
+    private String useCaseName; // Название Use Case (например, "Проверить подарок офицером")
+    
     @Column(name = "scenario_content", columnDefinition = "TEXT", nullable = false)
     private String scenarioContent; // AsciiDoc сценарий
     

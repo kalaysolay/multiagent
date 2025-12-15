@@ -51,6 +51,10 @@ async function sendMessage() {
     addMessage('user', message);
     
     try {
+        // Получаем ID текущей workflow сессии из URL или localStorage
+        const urlParams = new URLSearchParams(window.location.search);
+        const workflowSessionId = urlParams.get('sessionId') || localStorage.getItem('currentWorkflowSessionId');
+        
         // Отправляем запрос на бэкенд
         const response = await fetch('/api/chat', {
             method: 'POST',
@@ -59,7 +63,8 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message: message,
-                history: chatHistory
+                history: chatHistory,
+                workflowSessionId: workflowSessionId || null
             })
         });
         
