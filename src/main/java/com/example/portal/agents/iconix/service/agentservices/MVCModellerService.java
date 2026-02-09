@@ -1,56 +1,55 @@
 package com.example.portal.agents.iconix.service.agentservices;
 
+import com.example.portal.prompt.service.PromptService;
 import com.example.portal.shared.utils.PromptUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
-import java.io.InputStream;
-
+/**
+ * Сервис для построения MVC-диаграмм (диаграмм пригодности / Robustness diagram).
+ * <p>
+ * Промпт загружается из справочника (PromptService) по коду:
+ * - "mvc_modeller" — шаблон с правилами построения MVC-диаграмм (содержит %s)
+ */
 @Slf4j
 @Service
 public class MVCModellerService {
 
     private final ChatClient chat;
-
-    @Value("classpath:prompts/mvc_modeller.st")
-    private Resource mvcPromptTemplate;
+    private final PromptService promptService;
 
     @Autowired
-    public MVCModellerService(ChatClient.Builder builder) {
+    public MVCModellerService(ChatClient.Builder builder, PromptService promptService) {
         this.chat = builder.build();
+        this.promptService = promptService;
     }
 
-    public String generateMVCPlantUml(String narrative, String domainModelPlantUml, String useCaseModelPlantUml, String ragContext) {
-        String promptTemplate = readResource(mvcPromptTemplate);
-        
+    /**
+     * Генерирует MVC PlantUML-диаграммы для всех базовых прецедентов.
+     */
+    public String generateMVCPlantUml(String narrative, String domainModelPlantUml,
+                                      String useCaseModelPlantUml, String ragContext) {
+        // Загружаем промпт из БД (или кэша)
+        String promptTemplate = promptService.getByCode("mvc_modeller");
+
         // Экранируем все параметры перед вставкой
         String safeNarrative = PromptUtils.fullEscape(narrative);
         String safeDomainModel = PromptUtils.fullEscape(domainModelPlantUml);
         String safeUseCaseModel = PromptUtils.fullEscape(useCaseModelPlantUml);
         String safeRagContext = PromptUtils.fullEscape(ragContext.isBlank() ? "нет" : ragContext);
-        
-        String userPrompt = String.format(promptTemplate, safeNarrative, safeDomainModel, safeUseCaseModel, safeRagContext);
+
+        String userPrompt = String.format(promptTemplate,
+                safeNarrative, safeDomainModel, safeUseCaseModel, safeRagContext);
 
         return chat.prompt()
-                .user(PromptUtils.stEscape(userPrompt)) // Дополнительное экранирование для ST4
+                .user(PromptUtils.stEscape(userPrompt))
                 .options(OpenAiChatOptions.builder()
                         .temperature(1.0)
                         .build())
                 .call()
                 .content();
     }
-
-    private static String readResource(Resource resource) {
-        try (InputStream in = resource.getInputStream()) {
-            return new String(in.readAllBytes());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to read mvc prompt template", e);
-        }
-    }
 }
-

@@ -31,12 +31,22 @@ body {
 .sidebar-header {
     padding: 24px 20px;
     border-bottom: 1px solid #e5e5e7;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sidebar-header .logo {
+    height: 40px;
+    width: auto;
+    flex-shrink: 0;
 }
 
 .sidebar-header h2 {
     font-size: 20px;
     font-weight: 600;
     color: #1d1d1f;
+    margin: 0;
 }
 
 .sidebar-menu {

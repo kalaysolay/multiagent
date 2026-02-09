@@ -41,11 +41,23 @@ dependencies {
     
     // JGit для работы с Git репозиториями
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
+    
+    // Spring Security
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    
+    // JWT
+    implementation("io.jsonwebtoken:jjwt-api:0.12.5")
+    implementation("io.jsonwebtoken:jjwt-impl:0.12.5")
+    implementation("io.jsonwebtoken:jjwt-jackson:0.12.5")
+    
+    // BCrypt для хеширования паролей
+    implementation("org.springframework.security:spring-security-crypto")
 
     compileOnly("org.projectlombok:lombok:1.18.34")
     annotationProcessor("org.projectlombok:lombok:1.18.34")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.security:spring-security-test")
 
     annotationProcessor ("org.projectlombok:lombok")
     testCompileOnly ("org.projectlombok:lombok")

@@ -5,12 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Портал аналитика</title>
     <link rel="stylesheet" href="/css/portal.css">
+    <script src="/js/auth.js"></script>
 </head>
 <body>
     <div class="app-container">
         <!-- Боковое меню -->
         <aside class="sidebar">
             <div class="sidebar-header">
+                <img src="/images/analyzer-logo.png" alt="ANALYZER Logo" class="logo">
                 <h2>Портал аналитика</h2>
             </div>
             
@@ -44,6 +46,14 @@
                         <li><a href="/chat.html" class="menu-item">Chat with LLM</a></li>
                     </ul>
                 </div>
+                
+                <!-- Раздел Администрирование (только для админов) -->
+                <div class="menu-section" id="adminSection" style="display: none;">
+                    <div class="menu-section-title">Администрирование</div>
+                    <ul class="menu-items">
+                        <li><a href="/prompts.html" class="menu-item">Промпты</a></li>
+                    </ul>
+                </div>
             </nav>
         </aside>
         
@@ -66,5 +76,13 @@
             </div>
         </main>
     </div>
+    <script>
+        // Показываем раздел администрирования только для админов
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.auth && window.auth.isAdmin()) {
+                document.getElementById('adminSection').style.display = '';
+            }
+        });
+    </script>
 </body>
 </html>

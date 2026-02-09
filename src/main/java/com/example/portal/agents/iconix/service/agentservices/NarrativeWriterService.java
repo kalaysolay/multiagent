@@ -1,42 +1,40 @@
 package com.example.portal.agents.iconix.service.agentservices;
 
+import com.example.portal.prompt.service.PromptService;
 import com.example.portal.shared.utils.PromptUtils;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * Сервис для генерации пользовательского нарратива для ICONIX-моделирования.
+ * <p>
+ * Промпт загружается из справочника (PromptService) по коду:
+ * - "narrative_writer" — промпт для формирования нарратива (содержит %s)
+ */
 @Service
 public class NarrativeWriterService {
 
     private final ChatClient chat;
+    private final PromptService promptService;
 
     @Autowired
-    public NarrativeWriterService(ChatClient.Builder builder) {
+    public NarrativeWriterService(ChatClient.Builder builder, PromptService promptService) {
         this.chat = builder.build();
+        this.promptService = promptService;
     }
 
+    /**
+     * Генерирует подробный пользовательский нарратив на основе описания задачи,
+     * бизнес-цели и RAG-контекста.
+     */
     public String composeNarrative(String taskDescription, String goal, String ragContext) {
-        String prompt = String.format("""
-Ты — методолог процессов комплаенс и аналитик требований.
-На основе описания задачи и цели сформируй подробный пользовательский нарратив для ICONIX-моделирования.
-Обязательно используй термины и функциональность из предоставленного контекста системы (если он есть).
-Структура ответа:
-- 3–5 абзацев, каждый описывает последовательность действий пользователя и системные реакции.
-- Упоминай ключевые роли, UI-экраны, интеграции и сущности из контекста.
-- Не углубляйся слишком в технику. Глоссарий - для бизнес-заказчика, а не для разработчиков. Но имей ввиду, что на основе этого нарратива будет составляться доменная модель.
+        // Загружаем промпт из БД (или кэша)
+        String promptTemplate = promptService.getByCode("narrative_writer");
 
-Описание задачи:
-%s
-
-Бизнес-цель:
-%s
-
-Контекст системы (RAG):
-%s
-
-Выведи только текст нарратива без списков, заголовков и пояснений.
-""", safe(taskDescription), safe(goal), normalizeContext(ragContext));
+        String prompt = String.format(promptTemplate,
+                safe(taskDescription), safe(goal), normalizeContext(ragContext));
 
         return chat.prompt()
                 .user(PromptUtils.stEscape(prompt))
@@ -55,4 +53,3 @@ public class NarrativeWriterService {
         return (ragContext == null || ragContext.isBlank()) ? "нет" : ragContext;
     }
 }
-
