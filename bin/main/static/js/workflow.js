@@ -101,6 +101,12 @@ async function loadSessionFromUrl() {
             // Парсим и отображаем Use Case для декомпозиции
             parseAndDisplayUseCases();
             
+            // Загружаем декомпозированные сценарии, если есть
+            // Используем requestId, который уже объявлен выше в функции
+            if (requestId) {
+                loadDecomposedScenarios(requestId);
+            }
+            
             // Убеждаемся, что обработчики кликов установлены (если они еще не установлены)
             // Это нужно, если diagram-modal.js загрузился раньше, чем данные
             ensureDiagramButtonHandlers();
@@ -601,40 +607,24 @@ function extractUseCasesFromPlantUml(plantUmlCode) {
     
     const patterns = [
         // usecase "Название" as ID << stereotype >>
+        // Приоритетный паттерн - извлекает и ID, и стереотип
         {
-            regex: /usecase\s+"([^"]+)"\s+as\s+(\w+)(?:\s*<<[^>]+>>)?/gi,
+            regex: /usecase\s+"([^"]+)"\s+as\s+(\w+)(?:\s*<<\s*([^>]+)\s*>>)?/gi,
             nameIndex: 1,
             idIndex: 2,
+            stereotypeIndex: 3,
             description: 'usecase "Name" as ID <<stereotype>>'
-        },
-        // usecase "Название" as ID (без стереотипа)
-        {
-            regex: /usecase\s+"([^"]+)"\s+as\s+(\w+)(?!\s*<<)/gi,
-            nameIndex: 1,
-            idIndex: 2,
-            description: 'usecase "Name" as ID'
         },
         // usecase "Название" << stereotype >> (без as)
         {
-            regex: /usecase\s+"([^"]+)"(?:\s*<<[^>]+>>)?/gi,
+            regex: /usecase\s+"([^"]+)"(?:\s*<<\s*([^>]+)\s*>>)?/gi,
             nameIndex: 1,
             idIndex: null,
+            stereotypeIndex: 2,
             description: 'usecase "Name" <<stereotype>>'
-        },
-        // (actor) --> (usecase "Название")
-        {
-            regex: /\([^)]*\)\s*-->\s*\(usecase\s+"([^"]+)"\)/gi,
-            nameIndex: 1,
-            idIndex: null,
-            description: '(actor) --> (usecase "Name")'
-        },
-        // actor --> usecase "Название"
-        {
-            regex: /actor\s+-->\s+usecase\s+"([^"]+)"/gi,
-            nameIndex: 1,
-            idIndex: null,
-            description: 'actor --> usecase "Name"'
         }
+        // Примечание: убрали паттерны без стереотипов и связи с акторами,
+        // так как показываем только Use Case с << base >> стереотипом
     ];
     
     const foundIds = new Set();
@@ -663,6 +653,30 @@ function extractUseCasesFromPlantUml(plantUmlCode) {
                 return;
             }
             
+            // Извлекаем стереотип из match (если есть индекс для стереотипа) или из полного совпадения
+            let stereotype = null;
+            if (patternInfo.stereotypeIndex && match[patternInfo.stereotypeIndex]) {
+                stereotype = match[patternInfo.stereotypeIndex].trim().toLowerCase();
+            } else {
+                // Пробуем извлечь из полного совпадения как fallback
+                const fullMatch = match[0];
+                const stereotypeMatch = fullMatch.match(/<<\s*([^>]+)\s*>>/i);
+                if (stereotypeMatch) {
+                    stereotype = stereotypeMatch[1].trim().toLowerCase();
+                }
+            }
+            
+            // Фильтруем: показываем только Use Case со стереотипом << base >>
+            // Регистронезависимая проверка
+            if (!stereotype || stereotype !== 'base') {
+                if (stereotype) {
+                    console.log(`Skipping Use Case "${name.trim()}" with stereotype "${stereotype}" (only << base >> are shown)`);
+                } else {
+                    console.log(`Skipping Use Case "${name.trim()}" without stereotype (only << base >> are shown)`);
+                }
+                return;
+            }
+            
             // Создаем уникальный ключ
             const key = id ? `${id}:${name}` : name;
             
@@ -670,9 +684,10 @@ function extractUseCasesFromPlantUml(plantUmlCode) {
                 foundIds.add(key);
                 useCases.push({
                     id: id ? id.trim() : null,
-                    name: name.trim()
+                    name: name.trim(),
+                    stereotype: stereotype
                 });
-                console.log(`Found Use Case: "${name.trim()}"${id ? ' (ID: ' + id.trim() + ')' : ''} using pattern: ${patternInfo.description}`);
+                console.log(`Found Base Use Case: "${name.trim()}"${id ? ' (ID: ' + id.trim() + ')' : ''} using pattern: ${patternInfo.description}`);
             }
         });
         
@@ -718,10 +733,17 @@ async function handleDecomposition() {
         return;
     }
     
-    const selectedUseCases = Array.from(checkedBoxes).map(cb => ({
-        id: cb.dataset.usecaseId,
-        name: cb.value
-    }));
+    // Получаем данные о выбранных Use Case (алиас и название)
+    const selectedUseCases = Array.from(checkedBoxes).map(cb => {
+        const item = cb.closest('.usecase-item');
+        return {
+            alias: cb.dataset.usecaseId || cb.value,
+            name: item ? item.querySelector('label').textContent.trim() : cb.value
+        };
+    });
+    
+    console.log('Decomposing Use Cases:', selectedUseCases);
+    showStatus(`Запускаем декомпозицию для: ${selectedUseCases.map(uc => uc.name).join(', ')}`, 'info');
     
     const decomposeButton = document.getElementById('decomposeButton');
     const btnText = decomposeButton.querySelector('.btn-text');
@@ -733,38 +755,223 @@ async function handleDecomposition() {
     btnLoader.style.display = 'flex';
     
     try {
-        // TODO: Реализовать API endpoint для декомпозиции
-        // Пока просто показываем сообщение
-        showStatus(`Декомпозиция ${selectedUseCases.length} Use Case будет реализована в следующей версии`, 'info');
+        // Получаем requestId из URL или из сохраненной сессии
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestId = urlParams.get('requestId') || getCurrentRequestId();
         
-        // Пример вызова API (когда будет реализован):
-        /*
-        const response = await fetch(`${API_BASE}/decompose`, {
+        if (!requestId) {
+            throw new Error('Request ID не найден. Убедитесь, что вы находитесь на странице деталей workflow сессии.');
+        }
+        
+        // Вызываем API для декомпозиции
+        const response = await fetch('/api/usecase/decomposition', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                requestId: currentRequestId,
+                requestId: requestId,
                 useCases: selectedUseCases
             })
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        showStatus('Декомпозиция выполнена успешно', 'success');
-        */
+        
+        // Обновляем отображение сценариев
+        await loadDecomposedScenarios(requestId);
+        
+        // Показываем результаты
+        const successCount = data.results.filter(r => r.success).length;
+        const failCount = data.results.filter(r => !r.success).length;
+        
+        if (failCount === 0) {
+            showStatus(`Декомпозиция завершена успешно для ${successCount} Use Case`, 'success');
+        } else {
+            showStatus(`Декомпозиция завершена: ${successCount} успешно, ${failCount} с ошибками`, 'warning');
+        }
+        
+        // Снимаем выделение с чекбоксов после успешной декомпозиции
+        checkedBoxes.forEach(cb => {
+            if (data.results.find(r => r.useCaseAlias === cb.dataset.usecaseId && r.success)) {
+                cb.checked = false;
+            }
+        });
+        updateDecomposeButtonState();
         
     } catch (error) {
-        console.error('Error:', error);
-        showStatus(`Ошибка при декомпозиции: ${error.message}`, 'error');
+        console.error('Decomposition failed:', error);
+        showStatus(`Ошибка декомпозиции: ${error.message}`, 'error');
     } finally {
         decomposeButton.disabled = false;
         btnText.style.display = 'block';
         btnLoader.style.display = 'none';
+    }
+}
+
+/**
+ * Загружает декомпозированные сценарии для текущей workflow сессии
+ */
+async function loadDecomposedScenarios(requestId) {
+    try {
+        const response = await fetch(`/api/usecase/decomposition/${requestId}`);
+        
+        if (!response.ok) {
+            console.warn('Failed to load scenarios:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        displayScenarios(data.scenarios);
+        
+    } catch (error) {
+        console.error('Error loading scenarios:', error);
+    }
+}
+
+/**
+ * Отображает декомпозированные сценарии в правом контейнере
+ */
+function displayScenarios(scenarios) {
+    const container = document.getElementById('scenariosContainer');
+    if (!container) return;
+    
+    if (!scenarios || scenarios.length === 0) {
+        container.innerHTML = '<div class="scenarios-empty"><p>Выберите Use Case и нажмите "Декомпозировать" для генерации сценариев</p></div>';
+        return;
+    }
+    
+    container.innerHTML = scenarios.map(scenario => {
+        const createdAt = new Date(scenario.createdAt).toLocaleString('ru-RU');
+        const updatedAt = new Date(scenario.updatedAt).toLocaleString('ru-RU');
+        
+        return `
+            <div class="scenario-item" data-scenario-id="${scenario.id}">
+                <div class="scenario-header">
+                    <div class="scenario-title">${escapeHtml(scenario.useCaseName || 'Без названия')}</div>
+                    ${scenario.useCaseAlias ? `<div class="scenario-alias">${escapeHtml(scenario.useCaseAlias)}</div>` : ''}
+                </div>
+                <div class="scenario-meta">
+                    Создан: ${createdAt}${scenario.updatedAt !== scenario.createdAt ? ` | Обновлен: ${updatedAt}` : ''}
+                </div>
+                <div class="scenario-content">${escapeHtml(scenario.scenarioContent)}</div>
+                <div class="scenario-actions">
+                    <button onclick="showDocumentFromScenario('${scenario.id}')" 
+                            ${scenario.scenarioContent && scenario.scenarioContent.trim().length > 0 ? '' : 'disabled'}
+                            class="btn-view-document">Показать документ</button>
+                    <button onclick="copyScenario('${scenario.id}')">Копировать</button>
+                    <button onclick="downloadScenario('${scenario.id}', '${escapeHtml(scenario.useCaseName || 'scenario')}')">Скачать</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Получает текущий requestId из URL или из сохраненной сессии
+ */
+function getCurrentRequestId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let requestId = urlParams.get('requestId');
+    
+    if (!requestId) {
+        // Пробуем получить из URL страницы (например, /workflow/detail?requestId=...)
+        const match = window.location.search.match(/requestId=([^&]+)/);
+        if (match) {
+            requestId = match[1];
+        }
+    }
+    
+    if (!requestId) {
+        // Пробуем получить из сохраненных данных сессии
+        const sessionData = sessionStorage.getItem('currentWorkflowSession');
+        if (sessionData) {
+            try {
+                const data = JSON.parse(sessionData);
+                requestId = data.requestId;
+            } catch (e) {
+                console.warn('Failed to parse session data:', e);
+            }
+        }
+    }
+    
+    return requestId;
+}
+
+/**
+ * Экранирует HTML для безопасного отображения
+ */
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Копирует сценарий в буфер обмена
+ */
+function copyScenario(scenarioId) {
+    const scenarioItem = document.querySelector(`[data-scenario-id="${scenarioId}"]`);
+    if (!scenarioItem) return;
+    
+    const content = scenarioItem.querySelector('.scenario-content').textContent;
+    navigator.clipboard.writeText(content).then(() => {
+        showStatus('Сценарий скопирован в буфер обмена', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showStatus('Ошибка копирования', 'error');
+    });
+}
+
+/**
+ * Скачивает сценарий как файл
+ */
+function downloadScenario(scenarioId, useCaseName) {
+    const scenarioItem = document.querySelector(`[data-scenario-id="${scenarioId}"]`);
+    if (!scenarioItem) return;
+    
+    const content = scenarioItem.querySelector('.scenario-content').textContent;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${useCaseName.replace(/[^a-z0-9]/gi, '_')}_scenario.adoc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showStatus('Сценарий скачан', 'success');
+}
+
+/**
+ * Показывает документ из сценария в модальном окне
+ */
+function showDocumentFromScenario(scenarioId) {
+    const scenarioItem = document.querySelector(`[data-scenario-id="${scenarioId}"]`);
+    if (!scenarioItem) {
+        console.warn('Scenario item not found:', scenarioId);
+        return;
+    }
+    
+    const content = scenarioItem.querySelector('.scenario-content').textContent;
+    if (!content || content.trim().length === 0) {
+        showStatus('Сценарий пуст, невозможно отобразить документ', 'warning');
+        return;
+    }
+    
+    const title = scenarioItem.querySelector('.scenario-title').textContent;
+    
+    // Используем глобальную функцию из document-modal.js
+    if (window.showDocument) {
+        window.showDocument(content, title);
+    } else {
+        console.error('showDocument function not available');
+        showStatus('Ошибка: функция отображения документа не загружена', 'error');
     }
 }
 

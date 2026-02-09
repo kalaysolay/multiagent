@@ -7,47 +7,13 @@
     <link rel="stylesheet" href="/css/portal.css">
     <link rel="stylesheet" href="/css/agent-list.css">
     <link rel="stylesheet" href="/css/workflow.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Боковое меню -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2>Портал аналитика</h2>
-            </div>
-            
-            <nav class="sidebar-menu">
-                <!-- Раздел Документация -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Документация</div>
-                    <ul class="menu-items">
-                        <li><a href="/index.html" class="menu-item">User Story</a></li>
-                        <li><a href="/index.html" class="menu-item">Требования</a></li>
-                        <li><a href="/index.html" class="menu-item">Статьи</a></li>
-                        <li><a href="/render.html" class="menu-item">Рендерер PUML</a></li>
-                    </ul>
-                </div>
-                
-                <!-- Раздел Агенты -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Агенты</div>
-                    <ul class="menu-items">
-                        <li><a href="/iconix-agent-list.html" class="menu-item active">ICONIX Agent</a></li>
-                        <li><a href="#" class="menu-item">Анализатор требований</a></li>
-                        <li><a href="#" class="menu-item">Jira Agent</a></li>
-                        <li><a href="/git-analyser.html" class="menu-item">Git Analyser Agent</a></li>
-                    </ul>
-                </div>
-                
-                <!-- Раздел Чаты -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Чаты</div>
-                    <ul class="menu-items">
-                        <li><a href="/chat.html" class="menu-item">Chat with LLM</a></li>
-                    </ul>
-                </div>
-            </nav>
-        </aside>
+        <!-- Боковое меню (генерируется динамически через sidebar.js) -->
+        <div id="sidebar-container"></div>
         
         <!-- Основной контент -->
         <main class="main-content">

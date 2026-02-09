@@ -39,6 +39,22 @@
    docker run --rm -p 8080:8080 -e OPENAI_API_KEY=sk-... iconix-agents
    ```
 2. Для Render.com выбери **Docker** в качестве способа деплоя и укажи репозиторий.
+
+## REST API для публичного доступа к агентам
+
+Для публичного доступа к агентам используйте REST API endpoints:
+
+- `GET /api/agents` - получить список доступных агентов
+- `POST /api/agents/{agentName}` - вызвать конкретного агента
+- `POST /api/agents/jsonrpc` - JSON-RPC 2.0 endpoint (опционально)
+
+**Ключевое отличие от `/workflow/run`:**
+- `/workflow/run` - жесткий план: narrative → model → review → usecase → mvc → scenario
+- `/api/agents/{agentName}` - гибкий вызов любого агента независимо с передачей необходимых данных
+
+**⚠️ Примечание:** Это REST API, а не полноценный MCP протокол. Для настоящего MCP (stdio transport) потребуется дополнительная реализация.
+
+Подробная документация и примеры использования в файле [MCP.MD](MCP.MD).
 3. Добавь переменные окружения:
    - `OPENAI_API_KEY` — обязательна;
    - `OPENAI_VECTOR_STORE_ID` — если нужно подключить готовый Vector Store.

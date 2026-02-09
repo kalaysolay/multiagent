@@ -14,5 +14,15 @@ public interface UseCaseScenarioRepository extends JpaRepository<UseCaseScenario
      * Найти все сценарии для указанного requestId, отсортированные по дате создания (от новых к старым).
      */
     List<UseCaseScenario> findByRequestIdOrderByCreatedAtDesc(String requestId);
+    
+    /**
+     * Найти все сценарии для указанного requestId и useCaseAlias.
+     */
+    List<UseCaseScenario> findByRequestIdAndUseCaseAliasOrderByCreatedAtDesc(String requestId, String useCaseAlias);
+    
+    /**
+     * Найти последний сценарий для указанного requestId и useCaseAlias.
+     */
+    java.util.Optional<UseCaseScenario> findFirstByRequestIdAndUseCaseAliasOrderByCreatedAtDesc(String requestId, String useCaseAlias);
 }
 

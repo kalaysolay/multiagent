@@ -336,12 +336,27 @@ body {
     margin-top: 24px;
 }
 
+.decomposition-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.decomposition-left,
+.decomposition-right {
+    display: flex;
+    flex-direction: column;
+}
+
 .decomposition-card {
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     border: 1px solid #e5e5e7;
     padding: 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .decomposition-card h3 {
@@ -355,6 +370,11 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    flex: 1;
+}
+
+.usecase-list {
+    flex: 1;
 }
 
 .usecase-list-container {
@@ -431,5 +451,232 @@ body {
 
 .decomposition-actions .btn {
     min-width: 180px;
+}
+
+/* Контейнер для декомпозированных сценариев */
+.scenarios-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 600px;
+}
+
+.scenarios-empty {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+.scenario-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fdfdfd;
+}
+
+.scenario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.scenario-title {
+    font-weight: 600;
+    color: #333;
+    font-size: 16px;
+}
+
+.scenario-alias {
+    font-size: 12px;
+    color: #666;
+    font-family: 'Courier New', monospace;
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.scenario-meta {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 10px;
+}
+
+.scenario-content {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.scenario-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.scenario-actions button {
+    padding: 6px 12px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.scenario-actions button:hover {
+    background: #f0f0f0;
+}
+
+.scenario-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.scenario-actions button:disabled:hover {
+    background: white;
+}
+
+.scenario-actions .btn-view-document {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.scenario-actions .btn-view-document:hover:not(:disabled) {
+    background: #5568d3;
+    border-color: #5568d3;
+}
+
+/* Модальное окно для документа - переопределяем стили из diagram-modal.css */
+#documentModal.modal {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+#documentModal .document-modal-content {
+    background: white !important;
+    border-radius: 12px !important;
+    width: 1200px !important;
+    max-width: 90% !important;
+    max-height: 90vh !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    position: relative !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+#documentModal .modal-header {
+    background: #f8f9fa !important;
+    border-bottom: 1px solid #e0e0e0 !important;
+    flex-shrink: 0 !important;
+    padding: 20px 30px !important;
+}
+
+#documentModal .modal-header h2 {
+    color: #333 !important;
+    margin: 0 !important;
+}
+
+#documentModal .modal-close {
+    color: #666 !important;
+}
+
+#documentModal .modal-close:hover {
+    color: #000 !important;
+}
+
+#documentModal .document-modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 20px !important;
+    min-height: 0 !important;
+    max-height: calc(90vh - 140px) !important;
+    position: relative !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+#documentModal .modal-footer {
+    flex-shrink: 0 !important;
+    background: #f8f9fa !important;
+    border-top: 1px solid #e0e0e0 !important;
+    padding: 15px 30px !important;
+}
+
+#documentModal .document-modal-body #documentContainer {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: none;
+    min-height: fit-content;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Скрываем TOC слева для более удобной прокрутки */
+.document-modal-body #documentContainer #toc,
+.document-modal-body #documentContainer .toc,
+.document-modal-body #documentContainer aside#toc,
+.document-modal-body #documentContainer .sidebar {
+    display: none !important;
+}
+
+/* Убираем float для основного контента, если он был установлен из-за TOC */
+.document-modal-body #documentContainer .sect1,
+.document-modal-body #documentContainer .sect2,
+.document-modal-body #documentContainer .sect3,
+.document-modal-body #documentContainer article {
+    width: 100% !important;
+    float: none !important;
+    margin-left: 0 !important;
+}
+
+/* Улучшаем стили прокрутки */
+.document-modal-body::-webkit-scrollbar {
+    width: 12px;
+}
+
+.document-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 6px;
+}
+
+.document-modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 6px;
+}
+
+.document-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-style: italic;
+}
+
+.error-message {
+    padding: 20px;
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 6px;
+    color: #c33;
+}
+
+.error-message h3 {
+    margin-top: 0;
+    color: #c33;
 }
 

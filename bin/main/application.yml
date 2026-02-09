@@ -46,3 +46,8 @@ app:
   vector-store:
     table-name: document_embeddings
     embedding-dimensions: 1536  # Размерность для OpenAI text-embedding-ada-002
+
+# JWT конфигурация
+jwt:
+  secret: ${JWT_SECRET:iconix-agents-secret-key-change-in-production-min-256-bits}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24 часа в миллисекундах
