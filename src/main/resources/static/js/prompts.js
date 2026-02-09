@@ -14,7 +14,6 @@
     const statusMessage = document.getElementById('statusMessage');
     const promptsTable = document.getElementById('promptsTable');
     const promptsTableBody = document.getElementById('promptsTableBody');
-    const adminSection = document.getElementById('adminSection');
 
     // Модальное окно
     const editModal = document.getElementById('editModal');
@@ -31,12 +30,8 @@
 
     // ----- Инициализация -----
     document.addEventListener('DOMContentLoaded', function () {
-        // Показать секцию "Администрирование" в меню, если пользователь — админ
-        if (window.auth && window.auth.isAdmin()) {
-            adminSection.style.display = '';
-        }
-
         // Проверяем, является ли пользователь администратором
+        // Секция "Администрирование" в меню теперь управляется через sidebar.js
         if (!window.auth || !window.auth.isAdmin()) {
             loadingIndicator.style.display = 'none';
             accessDenied.style.display = '';
@@ -69,7 +64,8 @@
     // ----- Загрузка списка промптов -----
     async function loadPrompts() {
         try {
-            const response = await fetch('/api/prompts');
+            // Используем auth.fetch() для автоматического добавления JWT токена
+            const response = await (window.auth && window.auth.fetch ? window.auth.fetch('/api/prompts') : fetch('/api/prompts'));
 
             if (response.status === 403) {
                 loadingIndicator.style.display = 'none';
@@ -151,7 +147,8 @@
         editModal.classList.add('active');
 
         try {
-            var response = await fetch('/api/prompts/' + encodeURIComponent(code));
+            // Используем auth.fetch() для автоматического добавления JWT токена
+            var response = await (window.auth && window.auth.fetch ? window.auth.fetch('/api/prompts/' + encodeURIComponent(code)) : fetch('/api/prompts/' + encodeURIComponent(code)));
 
             if (!response.ok) {
                 throw new Error('HTTP ' + response.status);
@@ -181,7 +178,9 @@
         modalSave.textContent = 'Сохранение...';
 
         try {
-            var response = await fetch('/api/prompts/' + encodeURIComponent(currentPromptCode), {
+            // Используем auth.fetch() для автоматического добавления JWT токена
+            var fetchFn = window.auth && window.auth.fetch ? window.auth.fetch : fetch;
+            var response = await fetchFn('/api/prompts/' + encodeURIComponent(currentPromptCode), {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'

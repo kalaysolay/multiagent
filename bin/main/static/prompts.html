@@ -6,6 +6,7 @@
     <title>Промпты — Портал аналитика</title>
     <link rel="stylesheet" href="/css/portal.css">
     <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
     <style>
         /* Таблица промптов */
         .prompts-table {
@@ -276,53 +277,8 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Боковое меню -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <img src="/images/analyzer-logo.png" alt="ANALYZER Logo" class="logo">
-                <h2>Портал аналитика</h2>
-            </div>
-            
-            <nav class="sidebar-menu">
-                <!-- Раздел Документация -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Документация</div>
-                    <ul class="menu-items">
-                        <li><a href="#" class="menu-item">User Story</a></li>
-                        <li><a href="#" class="menu-item">Требования</a></li>
-                        <li><a href="#" class="menu-item">Статьи</a></li>
-                        <li><a href="/render.html" class="menu-item">Рендерер PUML</a></li>
-                    </ul>
-                </div>
-                
-                <!-- Раздел Агенты -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Агенты</div>
-                    <ul class="menu-items">
-                        <li><a href="/iconix-agent-list.html" class="menu-item">ICONIX Agent</a></li>
-                        <li><a href="#" class="menu-item">Анализатор требований</a></li>
-                        <li><a href="#" class="menu-item">Jira Agent</a></li>
-                        <li><a href="/git-analyser.html" class="menu-item">Git Analyser Agent</a></li>
-                    </ul>
-                </div>
-                
-                <!-- Раздел Чаты -->
-                <div class="menu-section">
-                    <div class="menu-section-title">Чаты</div>
-                    <ul class="menu-items">
-                        <li><a href="/chat.html" class="menu-item">Chat with LLM</a></li>
-                    </ul>
-                </div>
-                
-                <!-- Раздел Администрирование (только для админов) -->
-                <div class="menu-section" id="adminSection" style="display: none;">
-                    <div class="menu-section-title">Администрирование</div>
-                    <ul class="menu-items">
-                        <li><a href="/prompts.html" class="menu-item active">Промпты</a></li>
-                    </ul>
-                </div>
-            </nav>
-        </aside>
+        <!-- Боковое меню (генерируется динамически через sidebar.js) -->
+        <div id="sidebar-container"></div>
         
         <!-- Основной контент -->
         <main class="main-content">

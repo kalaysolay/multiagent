@@ -4,19 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PlantUML Renderer</title>
+    <link rel="stylesheet" href="/css/portal.css">
     <link rel="stylesheet" href="/css/render.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>PlantUML Renderer</h1>
-            <p>Введите код PlantUML для рендеринга диаграммы</p>
-            <nav style="margin-top: 15px;">
-                <a href="/index.html" style="color: white; text-decoration: underline; font-size: 14px;">← Вернуться к Workflow</a>
-            </nav>
-        </header>
+    <div class="app-container">
+        <!-- Боковое меню (генерируется динамически через sidebar.js) -->
+        <div id="sidebar-container"></div>
 
-        <div class="main-content">
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>PlantUML Renderer</h1>
+                <p>Введите код PlantUML для рендеринга диаграммы</p>
+            </div>
+
+            <div class="render-content">
             <div class="input-section">
                 <label for="plantUmlInput">PlantUML код:</label>
                 <textarea 
@@ -41,15 +46,15 @@
                     </button>
                 </div>
             </div>
-        </div>
 
-        <div id="statusMessage" class="status-message"></div>
-        
-        <!-- Блок для отображения результата валидации -->
-        <div id="validationResult" class="validation-result" style="display: none;">
-            <h3>Результат проверки синтаксиса</h3>
-            <div id="validationDetails"></div>
-        </div>
+            <div id="statusMessage" class="status-message"></div>
+            
+            <!-- Блок для отображения результата валидации -->
+            <div id="validationResult" class="validation-result" style="display: none;">
+                <h3>Результат проверки синтаксиса</h3>
+                <div id="validationDetails"></div>
+            </div>
+        </main>
     </div>
 
     <!-- Модальное окно для отображения диаграммы -->
