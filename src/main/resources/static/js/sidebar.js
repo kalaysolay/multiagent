@@ -101,6 +101,22 @@
                     text: 'Промпты',
                     href: '/prompts.html',
                     activePaths: ['/prompts.html'] // Активен на странице управления промптами
+                },
+                {
+                    text: 'Пользователи',
+                    href: '/users.html',
+                    activePaths: ['/users.html'] // Активен на странице управления пользователями
+                }
+            ]
+        },
+        // Раздел "Настройки" (доступен всем пользователям)
+        settings: {
+            title: 'Настройки',
+            items: [
+                {
+                    text: 'Изменить пароль',
+                    href: '/change-password.html',
+                    activePaths: ['/change-password.html'] // Активен на странице изменения пароля
                 }
             ]
         }
@@ -221,6 +237,9 @@
             adminSectionHtml = renderMenuSection(menuConfig.admin, currentPath);
         }
 
+        // Генерируем HTML для раздела "Настройки" (доступен всем пользователям)
+        const settingsSection = renderMenuSection(menuConfig.settings, currentPath);
+
         // Формируем полный HTML сайдбара
         return `
         <aside class="sidebar">
@@ -237,6 +256,8 @@
                 ${chatsSection}
                 
                 ${adminSectionHtml}
+                
+                ${settingsSection}
             </nav>
         </aside>`;
     }

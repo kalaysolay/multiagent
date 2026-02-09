@@ -15,7 +15,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -45,8 +47,12 @@ public class SecurityConfig {
      */
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByUsername(username)
+        return username -> userRepository.findByUsernameAndDeletedAtIsNull(username)
                 .map(user -> {
+                    // Проверяем, что пользователь не удалён
+                    if (user.isDeleted()) {
+                        throw new UsernameNotFoundException("User is deleted: " + username);
+                    }
                     // Определяем роль на основе флага is_admin
                     String role = Boolean.TRUE.equals(user.getIsAdmin()) ? "ROLE_ADMIN" : "ROLE_USER";
                     return org.springframework.security.core.userdetails.User.builder()
@@ -87,11 +93,13 @@ public class SecurityConfig {
                 .requestMatchers("/login.html", "/css/**", "/js/**", "/images/**", "/api/auth/login", "/api/auth/me").permitAll()
                 .requestMatchers("/index.html", "/", "/render.html", "/chat.html", "/git-analyser.html", 
                                 "/iconix-agent-list.html", "/iconix-agent-detail.html",
-                                "/prompts.html").permitAll()
+                                "/prompts.html", "/users.html", "/change-password.html").permitAll()
+                .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(customAuthenticationEntryPoint())
+                .accessDeniedHandler(customAccessDeniedHandler())
             )
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -117,6 +125,28 @@ public class SecurityConfig {
             } else {
                 // Для HTML запросов перенаправляем на login.html
                 response.sendRedirect("/login.html");
+            }
+        };
+    }
+    
+    @Bean
+    public AccessDeniedHandler customAccessDeniedHandler() {
+        return (HttpServletRequest request, HttpServletResponse response, 
+                AccessDeniedException accessDeniedException) -> {
+            String requestPath = request.getRequestURI();
+            
+            // Если это API запрос, возвращаем 403 JSON
+            if (requestPath.startsWith("/api/") || requestPath.startsWith("/workflow/") || 
+                requestPath.startsWith("/render/") || requestPath.startsWith("/chat/") ||
+                requestPath.startsWith("/git/") || requestPath.startsWith("/vector-store/")) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"Forbidden\",\"message\":\"Доступ запрещён. Требуются права администратора.\"}");
+            } else {
+                // Для HTML запросов возвращаем 403 страницу или редирект
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("text/html;charset=UTF-8");
+                response.getWriter().write("<html><body><h1>403 Forbidden</h1><p>Доступ запрещён</p></body></html>");
             }
         };
     }

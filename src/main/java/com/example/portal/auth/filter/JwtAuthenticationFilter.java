@@ -1,6 +1,7 @@
 package com.example.portal.auth.filter;
 
 import com.example.portal.auth.config.JwtTokenProvider;
+import com.example.portal.auth.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +23,7 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final JwtTokenProvider tokenProvider;
+    private final UserRepository userRepository;
     
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, 
@@ -32,15 +34,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
                 String username = tokenProvider.getUsernameFromToken(jwt);
                 
-                UsernamePasswordAuthenticationToken authentication = 
-                    new UsernamePasswordAuthenticationToken(
-                        username, 
-                        null, 
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
-                    );
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                // Загружаем пользователя из БД, чтобы определить его роль
+                userRepository.findByUsernameAndDeletedAtIsNull(username).ifPresent(user -> {
+                    // Определяем роль на основе флага is_admin
+                    String role = Boolean.TRUE.equals(user.getIsAdmin()) ? "ROLE_ADMIN" : "ROLE_USER";
+                    
+                    UsernamePasswordAuthenticationToken authentication = 
+                        new UsernamePasswordAuthenticationToken(
+                            username, 
+                            null, 
+                            Collections.singletonList(new SimpleGrantedAuthority(role))
+                        );
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                });
             }
         } catch (Exception ex) {
             logger.error("Could not set user authentication in security context", ex);

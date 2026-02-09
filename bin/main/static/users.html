@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пользователи — Портал аналитика</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <link rel="stylesheet" href="/css/users.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Боковое меню (генерируется динамически через sidebar.js) -->
+        <div id="sidebar-container"></div>
+        
+        <!-- Основной контент -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Управление пользователями</h1>
+                <p>Создание, просмотр и управление пользователями системы</p>
+            </div>
+            
+            <!-- Сообщение об ошибке доступа -->
+            <div class="access-denied" id="accessDenied" style="display: none;">
+                <h2>Доступ запрещён</h2>
+                <p>Данный раздел доступен только администраторам.</p>
+                <p style="margin-top: 16px;"><a href="/index.html" class="back-link">← Вернуться на главную</a></p>
+            </div>
+            
+            <!-- Индикатор загрузки -->
+            <div class="loading" id="loadingIndicator">
+                Загрузка пользователей...
+            </div>
+            
+            <!-- Статусное сообщение -->
+            <div class="status-message" id="statusMessage"></div>
+            
+            <!-- Панель управления -->
+            <div class="users-controls" id="usersControls" style="display: none;">
+                <div class="controls-row">
+                    <button id="addUserButton" class="btn btn-primary">
+                        <span>+ Добавить пользователя</span>
+                    </button>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="includeDeletedCheckbox">
+                        <span>Показать удалённых</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Таблица пользователей -->
+            <table class="users-table" id="usersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Имя пользователя</th>
+                        <th>Роль</th>
+                        <th>Статус</th>
+                        <th>Дата создания</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                </tbody>
+            </table>
+        </main>
+    </div>
+    
+    <!-- Модальное окно создания пользователя -->
+    <div class="modal-overlay" id="createUserModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Создать пользователя</h2>
+                <button class="modal-close" id="closeCreateModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-field">
+                    <label for="newUsername">Имя пользователя *</label>
+                    <input type="text" id="newUsername" placeholder="Введите имя пользователя" required>
+                    <div class="field-error" id="usernameError"></div>
+                </div>
+                <div class="modal-field">
+                    <label for="newPassword">Пароль *</label>
+                    <input type="password" id="newPassword" placeholder="Введите пароль" required>
+                    <div class="field-error" id="passwordError"></div>
+                </div>
+                <div class="modal-field">
+                    <label for="newPasswordConfirm">Подтверждение пароля *</label>
+                    <input type="password" id="newPasswordConfirm" placeholder="Повторите пароль" required>
+                    <div class="field-error" id="passwordConfirmError"></div>
+                </div>
+                <div class="modal-field">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="newUserIsAdmin">
+                        <span>Администратор</span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelCreateButton">Отмена</button>
+                <button class="btn btn-primary" id="saveCreateButton">Создать</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/users.js"></script>
+</body>
+</html>

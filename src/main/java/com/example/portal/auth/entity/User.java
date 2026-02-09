@@ -40,6 +40,18 @@ public class User {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     
+    /** Дата и время мягкого удаления пользователя. NULL означает, что пользователь активен. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+    
+    /**
+     * Проверяет, удалён ли пользователь (мягкое удаление).
+     * @return true, если deletedAt не null
+     */
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+    
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
