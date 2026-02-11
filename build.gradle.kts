@@ -1,6 +1,14 @@
+buildscript {
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:10.10.0")
+        classpath("org.postgresql:postgresql:42.7.3")
+    }
+}
+
 plugins {
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
+    id("org.flywaydb.flyway") version "10.10.0"
     java
 }
 
@@ -67,6 +75,14 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// Flyway configuration for repair task
+flyway {
+    url = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/iconix_agent_db"
+    user = System.getenv("DB_USER") ?: "postgres"
+    password = System.getenv("DB_PASSWORD") ?: "123qweasd"
+    locations = arrayOf("classpath:db/migration")
 }
 
 // Явно указываем главный класс приложения

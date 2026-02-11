@@ -9,6 +9,10 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Сущность для хранения сообщений чата с LLM.
+ * Поддерживает tool calling: хранение вызовов инструментов и их результатов.
+ */
 @Entity
 @Table(name = "chat_messages")
 @Data
@@ -29,6 +33,33 @@ public class ChatMessage {
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
     
+    /**
+     * JSON массив tool calls для сообщений ASSISTANT.
+     * Формат: [{"id": "call_xxx", "name": "tool_name", "arguments": {...}}]
+     */
+    @Column(name = "tool_calls_json", columnDefinition = "TEXT")
+    private String toolCallsJson;
+    
+    /**
+     * ID tool call для связи результата TOOL с вызовом в ASSISTANT.
+     * Используется только для роли TOOL.
+     */
+    @Column(name = "tool_call_id", length = 100)
+    private String toolCallId;
+    
+    /**
+     * Имя вызванного инструмента.
+     * Используется только для роли TOOL.
+     */
+    @Column(name = "tool_name", length = 100)
+    private String toolName;
+    
+    /**
+     * ID разговора для группировки сообщений в одну сессию чата.
+     */
+    @Column(name = "conversation_id", length = 36)
+    private String conversationId;
+    
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
     
@@ -39,9 +70,16 @@ public class ChatMessage {
         }
     }
     
+    /**
+     * Роли сообщений в чате.
+     */
     public enum MessageRole {
+        /** Сообщение от пользователя */
         USER,
-        ASSISTANT
+        /** Ответ от LLM (может содержать tool calls) */
+        ASSISTANT,
+        /** Результат выполнения инструмента */
+        TOOL
     }
 }
 

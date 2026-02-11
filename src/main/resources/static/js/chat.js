@@ -1,4 +1,5 @@
 let chatHistory = [];
+let currentConversationId = null;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
@@ -45,10 +46,14 @@ async function sendMessage() {
     // Отключаем кнопку и очищаем input
     const sendButton = document.getElementById('sendChatButton');
     sendButton.disabled = true;
+    sendButton.textContent = 'Обработка...';
     input.value = '';
     
     // Добавляем сообщение пользователя
     addMessage('user', message);
+    
+    // Показываем индикатор загрузки
+    const loadingDiv = showLoadingIndicator();
     
     try {
         // Получаем ID текущей workflow сессии из URL или localStorage
@@ -64,7 +69,8 @@ async function sendMessage() {
             body: JSON.stringify({
                 message: message,
                 history: chatHistory,
-                workflowSessionId: workflowSessionId || null
+                workflowSessionId: workflowSessionId || null,
+                conversationId: currentConversationId
             })
         });
         
@@ -74,8 +80,16 @@ async function sendMessage() {
         
         const data = await response.json();
         
-        // Добавляем ответ ассистента
-        addMessage('assistant', data.response);
+        // Убираем индикатор загрузки
+        if (loadingDiv) loadingDiv.remove();
+        
+        // Сохраняем conversation ID
+        if (data.conversationId) {
+            currentConversationId = data.conversationId;
+        }
+        
+        // Добавляем ответ ассистента с диаграммами и tool calls
+        addAssistantMessage(data.response, data.toolCalls, data.diagrams);
         
         // Обновляем историю
         chatHistory.push({ role: 'user', content: message });
@@ -83,16 +97,32 @@ async function sendMessage() {
         
     } catch (error) {
         console.error('Error:', error);
+        if (loadingDiv) loadingDiv.remove();
         addMessage('assistant', `Ошибка: ${error.message}. Убедитесь, что API endpoint /api/chat настроен.`);
     } finally {
         sendButton.disabled = false;
+        sendButton.textContent = 'Отправить';
         input.focus();
     }
 }
 
+function showLoadingIndicator() {
+    const messagesContainer = document.getElementById('chatMessages');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'message assistant-message loading-message';
+    loadingDiv.innerHTML = `
+        <p class="message-content">
+            <span class="loading-dots">Обрабатываю запрос<span>.</span><span>.</span><span>.</span></span>
+        </p>
+    `;
+    messagesContainer.appendChild(loadingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    return loadingDiv;
+}
+
 async function loadChatHistory() {
     try {
-        const response = await fetch('/api/chat/history');
+        const response = await fetch('/api/chat/history?limit=20');
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -107,9 +137,19 @@ async function loadChatHistory() {
             
             // Добавляем сообщения из истории
             data.messages.forEach(msg => {
-                addMessageFromHistory(msg.role, msg.content, msg.timestamp);
+                // Пропускаем TOOL сообщения в UI (они технические)
+                if (msg.role === 'tool') return;
+                
+                addMessageFromHistory(msg.role, msg.content, msg.timestamp, msg.toolCalls);
                 // Обновляем историю для контекста
-                chatHistory.push({ role: msg.role, content: msg.content });
+                if (msg.role === 'user' || msg.role === 'assistant') {
+                    chatHistory.push({ role: msg.role, content: msg.content });
+                }
+                
+                // Сохраняем conversation ID
+                if (msg.conversationId) {
+                    currentConversationId = msg.conversationId;
+                }
             });
             
             // Прокручиваем вниз
@@ -122,10 +162,69 @@ async function loadChatHistory() {
 }
 
 function addMessage(role, content) {
-    addMessageFromHistory(role, content, new Date().toISOString());
+    addMessageFromHistory(role, content, new Date().toISOString(), null);
 }
 
-function addMessageFromHistory(role, content, timestamp) {
+function addAssistantMessage(content, toolCalls, diagrams) {
+    const messagesContainer = document.getElementById('chatMessages');
+    
+    // Удаляем системное сообщение, если есть
+    const systemMessage = messagesContainer.querySelector('.system-message');
+    if (systemMessage && chatHistory.length > 0) {
+        systemMessage.remove();
+    }
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message assistant-message';
+    
+    // Основной контент
+    const contentP = document.createElement('p');
+    contentP.className = 'message-content';
+    contentP.innerHTML = formatMessageContent(content);
+    messageDiv.appendChild(contentP);
+    
+    // Tool calls info (если есть)
+    if (toolCalls && toolCalls.length > 0) {
+        const toolsDiv = document.createElement('div');
+        toolsDiv.className = 'tool-calls-info';
+        toolsDiv.innerHTML = `
+            <details>
+                <summary>🔧 Использовано инструментов: ${toolCalls.length}</summary>
+                <ul>
+                    ${toolCalls.map(tc => `<li><strong>${tc.name}</strong></li>`).join('')}
+                </ul>
+            </details>
+        `;
+        messageDiv.appendChild(toolsDiv);
+    }
+    
+    // Диаграммы (если есть)
+    if (diagrams && diagrams.length > 0) {
+        const diagramsDiv = document.createElement('div');
+        diagramsDiv.className = 'diagrams-container';
+        
+        diagrams.forEach((diagram, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'diagram-btn';
+            btn.textContent = `📊 ${diagram.title || 'Диаграмма ' + (index + 1)}`;
+            btn.onclick = () => showDiagram(diagram.code, diagram.title);
+            diagramsDiv.appendChild(btn);
+        });
+        
+        messageDiv.appendChild(diagramsDiv);
+    }
+    
+    // Время
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'message-time';
+    timeSpan.textContent = new Date().toLocaleTimeString('ru-RU');
+    messageDiv.appendChild(timeSpan);
+    
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function addMessageFromHistory(role, content, timestamp, toolCalls) {
     const messagesContainer = document.getElementById('chatMessages');
     
     // Удаляем системное сообщение, если есть
@@ -139,7 +238,7 @@ function addMessageFromHistory(role, content, timestamp) {
     
     const contentP = document.createElement('p');
     contentP.className = 'message-content';
-    contentP.textContent = content;
+    contentP.innerHTML = formatMessageContent(content);
     
     const timeSpan = document.createElement('span');
     timeSpan.className = 'message-time';
@@ -153,10 +252,91 @@ function addMessageFromHistory(role, content, timestamp) {
     }
     
     messageDiv.appendChild(contentP);
+    
+    // Tool calls (если есть в истории)
+    if (toolCalls && toolCalls.length > 0) {
+        const toolsDiv = document.createElement('div');
+        toolsDiv.className = 'tool-calls-info';
+        toolsDiv.innerHTML = `
+            <details>
+                <summary>🔧 Использовано инструментов: ${toolCalls.length}</summary>
+                <ul>
+                    ${toolCalls.map(tc => `<li><strong>${tc.name}</strong></li>`).join('')}
+                </ul>
+            </details>
+        `;
+        messageDiv.appendChild(toolsDiv);
+    }
+    
     messageDiv.appendChild(timeSpan);
     messagesContainer.appendChild(messageDiv);
     
     // Прокручиваем вниз
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+/**
+ * Форматирует контент сообщения (поддержка markdown-подобного форматирования)
+ */
+function formatMessageContent(content) {
+    if (!content) return '';
+    
+    // Экранируем HTML
+    let formatted = content
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    
+    // Преобразуем ```code``` блоки
+    formatted = formatted.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        return `<pre class="code-block"><code class="language-${lang}">${code.trim()}</code></pre>`;
+    });
+    
+    // Преобразуем `inline code`
+    formatted = formatted.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    
+    // Преобразуем **bold**
+    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Преобразуем *italic*
+    formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    
+    // Преобразуем переносы строк
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    return formatted;
+}
+
+/**
+ * Показывает диаграмму в модальном окне
+ */
+function showDiagram(plantUmlCode, title) {
+    // Проверяем, есть ли функция renderAndShowDiagram из diagram-modal.js
+    if (typeof window.renderAndShowDiagram === 'function') {
+        window.renderAndShowDiagram(plantUmlCode, title || 'Диаграмма');
+    } else {
+        // Fallback: показываем код в alert
+        alert('Модуль diagram-modal не загружен.\n\nPlantUML код:\n' + plantUmlCode);
+    }
+}
+
+/**
+ * Начать новый разговор
+ */
+function startNewConversation() {
+    currentConversationId = null;
+    chatHistory = [];
+    const messagesContainer = document.getElementById('chatMessages');
+    messagesContainer.innerHTML = `
+        <div class="system-message">
+            <p>Начните новый разговор. Вы можете:</p>
+            <ul>
+                <li>Спросить о статусе workflow сессий</li>
+                <li>Попросить сгенерировать доменную модель по нарративу</li>
+                <li>Запросить список доступных инструментов</li>
+                <li>Задать вопросы по ICONIX методологии</li>
+            </ul>
+        </div>
+    `;
 }
 
