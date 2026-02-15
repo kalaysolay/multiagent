@@ -87,7 +87,7 @@ public class SecurityConfig {
                 .requestMatchers("/login.html", "/css/**", "/js/**", "/images/**", "/api/auth/login", "/api/auth/me").permitAll()
                 .requestMatchers("/index.html", "/", "/render.html", "/chat.html", "/git-analyser.html", 
                                 "/iconix-agent-list.html", "/iconix-agent-detail.html",
-                                "/prompts.html").permitAll()
+                                "/prompts.html", "/vector-store.html").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions

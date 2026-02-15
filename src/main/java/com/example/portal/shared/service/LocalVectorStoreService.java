@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -144,6 +145,65 @@ public class LocalVectorStoreService {
     }
     
     /**
+     * Получить список документов с пагинацией.
+     *
+     * @param offset смещение
+     * @param limit  количество записей
+     * @return список документов с превью контента и метаданными
+     */
+    public List<DocumentListItem> listDocuments(int offset, int limit) {
+        try {
+            String sql = String.format(
+                    "SELECT id, LEFT(content, 200) as content_preview, metadata, created_at " +
+                    "FROM %s " +
+                    "ORDER BY created_at DESC " +
+                    "LIMIT ? OFFSET ?",
+                    tableName
+            );
+            return jdbcTemplate.query(
+                    sql,
+                    new Object[]{limit, offset},
+                    (rs, rowNum) -> {
+                        UUID id = UUID.fromString(rs.getString("id"));
+                        String contentPreview = rs.getString("content_preview");
+                        Instant createdAt = rs.getTimestamp("created_at") != null
+                                ? rs.getTimestamp("created_at").toInstant()
+                                : null;
+                        Map<String, Object> metadata = null;
+                        String metadataJson = rs.getString("metadata");
+                        if (metadataJson != null) {
+                            try {
+                                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                                metadata = mapper.readValue(metadataJson,
+                                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                            } catch (Exception e) {
+                                log.warn("Failed to parse metadata for document {}", id, e);
+                            }
+                        }
+                        return new DocumentListItem(id, contentPreview, metadata, createdAt);
+                    }
+            );
+        } catch (Exception e) {
+            log.error("Failed to list documents", e);
+            throw new RuntimeException("Failed to list documents", e);
+        }
+    }
+
+    /**
+     * Получить общее количество документов в хранилище.
+     */
+    public long countDocuments() {
+        try {
+            String sql = String.format("SELECT COUNT(*) FROM %s", tableName);
+            Long count = jdbcTemplate.queryForObject(sql, Long.class);
+            return count != null ? count : 0;
+        } catch (Exception e) {
+            log.error("Failed to count documents", e);
+            throw new RuntimeException("Failed to count documents", e);
+        }
+    }
+
+    /**
      * Удалить документ по ID.
      */
     @Transactional
@@ -157,5 +217,10 @@ public class LocalVectorStoreService {
      * Результат поиска документа.
      */
     public record DocumentResult(UUID id, String content, double similarity, Map<String, Object> metadata) {}
+
+    /**
+     * Элемент списка документов (превью без полного контента).
+     */
+    public record DocumentListItem(UUID id, String contentPreview, Map<String, Object> metadata, Instant createdAt) {}
 }
 

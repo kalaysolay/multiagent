@@ -82,7 +82,7 @@ flyway {
     url = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/iconix_agent_db"
     user = System.getenv("DB_USER") ?: "postgres"
     password = System.getenv("DB_PASSWORD") ?: "123qweasd"
-    locations = arrayOf("classpath:db/migration")
+    locations = arrayOf("filesystem:src/main/resources/db/migration")
 }
 
 // Явно указываем главный класс приложения

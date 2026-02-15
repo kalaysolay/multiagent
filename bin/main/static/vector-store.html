@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Векторное хранилище — Портал аналитика</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <style>
+        .vector-store-section {
+            margin-bottom: 32px;
+        }
+        .vector-store-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 12px;
+        }
+        .upload-zone {
+            border: 2px dashed #d2d2d7;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            background: #fafafa;
+            margin-bottom: 12px;
+        }
+        .upload-zone.dragover {
+            border-color: #0071e3;
+            background: #f0f7ff;
+        }
+        .documents-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e5e7;
+        }
+        .documents-table th,
+        .documents-table td {
+            padding: 14px 20px;
+            text-align: left;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        .documents-table th {
+            background: #f5f5f7;
+            font-size: 13px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .documents-table td {
+            font-size: 14px;
+            color: #1d1d1f;
+        }
+        .documents-table tr:last-child td {
+            border-bottom: none;
+        }
+        .content-preview {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .doc-id {
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #86868b;
+        }
+        .btn-delete {
+            padding: 6px 12px;
+            font-size: 13px;
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-delete:hover {
+            background: #ffcdd2;
+        }
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .search-block {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .search-block input {
+            flex: 1;
+            padding: 10px 14px;
+            font-size: 15px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+        }
+        .btn { padding: 10px 24px; font-size: 15px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; }
+        .btn-primary { background: #0071e3; color: white; }
+        .btn-primary:hover { background: #0077ed; }
+        .btn-primary:disabled { background: #86868b; cursor: not-allowed; }
+        .btn-secondary { background: #f5f5f7; color: #1d1d1f; border: 1px solid #d2d2d7; }
+        .btn-secondary:hover { background: #e8e8ed; }
+        .status-message { padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+        .status-message.success { display: block; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
+        .status-message.error { display: block; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+        .loading { text-align: center; padding: 60px 20px; color: #86868b; font-size: 16px; }
+        .access-denied { text-align: center; padding: 80px 20px; }
+        .access-denied h2 { font-size: 24px; color: #1d1d1f; margin-bottom: 12px; }
+        .access-denied p { font-size: 16px; color: #86868b; }
+        .text-input { width: 100%; min-height: 120px; padding: 14px 16px; font-size: 14px; border: 1px solid #d2d2d7; border-radius: 8px; resize: vertical; }
+        .selected-files-list { margin: 12px 0; padding: 12px; background: #f0f7ff; border-radius: 8px; font-size: 14px; }
+        .selected-files-list li { margin: 4px 0; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div id="sidebar-container"></div>
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Векторное хранилище</h1>
+                <p>Управление документами для RAG (добавление, просмотр, удаление)</p>
+            </div>
+            <div class="access-denied" id="accessDenied" style="display: none;">
+                <h2>Доступ запрещён</h2>
+                <p>Данный раздел доступен только администраторам.</p>
+                <p style="margin-top: 16px;"><a href="/index.html">← Вернуться на главную</a></p>
+            </div>
+            <div id="mainContent" style="display: none;">
+                <div class="status-message" id="statusMessage"></div>
+                <div class="vector-store-section">
+                    <h3>Загрузить файлы</h3>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="upload-zone" id="uploadZone">
+                            <input type="file" id="fileInput" name="files" multiple style="display: none;">
+                            <p>Перетащите файлы сюда или <a href="#" id="browseLink">выберите</a></p>
+                        </div>
+                        <div id="selectedFilesList" class="selected-files-list" style="display: none;"></div>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>Загрузить</button>
+                    </form>
+                </div>
+                <div class="vector-store-section">
+                    <h3>Добавить текст</h3>
+                    <textarea class="text-input" id="textInput" placeholder="Вставьте текст документа..."></textarea>
+                    <button class="btn btn-primary" id="addTextBtn" style="margin-top: 12px;">Добавить в хранилище</button>
+                </div>
+                <div class="vector-store-section">
+                    <h3>Тестовый поиск</h3>
+                    <div class="search-block">
+                        <input type="text" id="searchInput" placeholder="Введите запрос для поиска...">
+                        <button class="btn btn-secondary" id="searchBtn">Поиск</button>
+                    </div>
+                    <div id="searchResults"></div>
+                </div>
+                <div class="vector-store-section">
+                    <h3>Документы в хранилище</h3>
+                    <div class="loading" id="tableLoading">Загрузка...</div>
+                    <table class="documents-table" id="documentsTable" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Превью</th>
+                                <th>Метаданные</th>
+                                <th>Дата</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="documentsTableBody"></tbody>
+                    </table>
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="/js/vector-store.js"></script>
+</body>
+</html>

@@ -100,7 +100,12 @@
                 {
                     text: 'Промпты',
                     href: '/prompts.html',
-                    activePaths: ['/prompts.html'] // Активен на странице управления промптами
+                    activePaths: ['/prompts.html']
+                },
+                {
+                    text: 'Векторное хранилище',
+                    href: '/vector-store.html',
+                    activePaths: ['/vector-store.html']
                 }
             ]
         }

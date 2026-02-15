@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@ComponentScan(basePackages = {"com.example.portal", "com.example.workflow"})
+@ComponentScan(basePackages = {"com.example.portal", "com.example.workflow", "com.example.mcp"})
 public class Application {
     public static void main(String[] args) {
         SpringApplication.run(com.example.portal.Application.class, args);

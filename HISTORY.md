@@ -1,5 +1,47 @@
 # История изменений проекта
 
+## 2026-02-13 — Админка векторизации документов
+
+### Описание изменений
+Добавлена админская страница «Векторное хранилище» для загрузки и управления документами в локальном pgvector. Администраторы могут загружать файлы (с автоматическим чанкингом), добавлять текст вручную, просматривать список документов и удалять их. Операции записи (POST, DELETE) и просмотра списка защищены проверкой is_admin.
+
+### Новые endpoints
+
+| Endpoint | Метод | Описание | Доступ |
+|----------|-------|----------|--------|
+| `/api/vector-store/documents` | GET | Список документов с пагинацией (?page=0&size=20) | Admin |
+| `/api/vector-store/documents/upload` | POST | Загрузка файлов (multipart), автоматический чанкинг ~2500 символов | Admin |
+
+### Изменённые классы
+
+| Класс | Что изменено |
+|-------|--------------|
+| `LocalVectorStoreService` | Добавлены `listDocuments(offset, limit)`, `countDocuments()`, record `DocumentListItem` |
+| `VectorStoreController` | Внедрён UserRepository; проверка admin для POST, DELETE, GET documents; добавлены GET documents, POST upload; метод `getCurrentUser()`, `chunkText()` |
+| `SecurityConfig` | `/vector-store.html` добавлена в permitAll |
+
+### Новые файлы
+
+| Файл | Описание |
+|------|----------|
+| `src/main/resources/static/vector-store.html` | Страница админки векторного хранилища |
+| `src/main/resources/static/js/vector-store.js` | Логика загрузки файлов, добавления текста, списка, удаления, поиска |
+| `src/test/java/com/example/workflow/VectorStoreControllerTest.java` | Юнит-тесты контроллера (admin/403) |
+
+### Изменённые файлы
+
+| Файл | Что изменено |
+|------|--------------|
+| `src/main/resources/static/js/sidebar.js` | Добавлен пункт «Векторное хранилище» в раздел «Администрирование» |
+
+### Тесты
+
+| Файл | Описание |
+|------|----------|
+| `VectorStoreControllerTest` | WebMvcTest: GET documents, POST add, POST batch, DELETE — для admin 200, для обычного пользователя 403, для неаутентифицированного 403 |
+
+---
+
 ## 2026-02-09 — Рефакторинг сайдбара в отдельный компонент
 
 ### Описание изменений
