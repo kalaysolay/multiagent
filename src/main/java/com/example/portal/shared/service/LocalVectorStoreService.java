@@ -1,6 +1,8 @@
 package com.example.portal.shared.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -13,23 +15,36 @@ import java.util.stream.Collectors;
 /**
  * Сервис для работы с локальным векторным хранилищем на базе PostgreSQL + pgvector.
  * Обеспечивает сохранение и поиск документов по векторному сходству.
+ * Использует Spring AI EmbeddingModel (Ollama nomic-embed-text) для создания эмбеддингов.
  */
 @Service
 @Slf4j
 public class LocalVectorStoreService {
-    
+
     private final JdbcTemplate jdbcTemplate;
-    private final EmbeddingService embeddingService;
+    private final EmbeddingModel embeddingModel;
     private final String tableName;
-    
+
     public LocalVectorStoreService(
             JdbcTemplate jdbcTemplate,
-            EmbeddingService embeddingService,
+            @Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel,
             @Value("${app.vector-store.table-name:document_embeddings}") String tableName
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.embeddingService = embeddingService;
+        this.embeddingModel = embeddingModel;
         this.tableName = tableName;
+    }
+
+    /**
+     * Создаёт эмбеддинг для текста через Spring AI и конвертирует в строку для pgvector.
+     */
+    private List<Double> createEmbedding(String text) {
+        float[] vector = embeddingModel.embed(text);
+        List<Double> result = new ArrayList<>(vector.length);
+        for (float f : vector) {
+            result.add((double) f);
+        }
+        return result;
     }
     
     /**
@@ -43,8 +58,8 @@ public class LocalVectorStoreService {
     @Transactional
     public UUID addDocument(String content, Map<String, Object> metadata) {
         try {
-            // Создаем эмбеддинг
-            List<Double> embedding = embeddingService.createEmbedding(content);
+            // Создаём эмбеддинг через Spring AI (Ollama)
+            List<Double> embedding = createEmbedding(content);
             
             // Конвертируем List<Double> в строку для pgvector формата "[1.0,2.0,3.0]"
             String embeddingString = "[" + embedding.stream()
@@ -96,8 +111,8 @@ public class LocalVectorStoreService {
      */
     public List<DocumentResult> findSimilar(String query, int topK) {
         try {
-            // Создаем эмбеддинг для запроса
-            List<Double> queryEmbedding = embeddingService.createEmbedding(query);
+            // Создаём эмбеддинг для запроса через Spring AI
+            List<Double> queryEmbedding = createEmbedding(query);
             String embeddingString = "[" + queryEmbedding.stream()
                     .map(String::valueOf)
                     .collect(Collectors.joining(",")) + "]";

@@ -3,12 +3,22 @@ server:
 
 spring:
   ai:
+    # Выбор провайдера Chat (LLM): openai — для ChatClient, ollama отключаем (используем только для эмбеддингов)
+    model:
+      chat: openai
+      embedding: ollama
     openai:
       api-key: ${OPENAI_API_KEY}
       chat:
         options:
           model: gpt-3.5-turbo
           temperature: 1.0
+    # Ollama для локальных эмбеддингов (векторизация без отправки данных в облако)
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      embedding:
+        options:
+          model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
   
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:iconix_agent_db}
@@ -32,21 +42,16 @@ spring:
     locations: classpath:db/migration
 
 app:
-  # Провайдер для векторного хранилища: OPENAI или DEEPSEEK
-  vector-store-provider: ${VECTOR_STORE_PROVIDER:OPENAI}
-  # Провайдер для LLM: OPENAI или DEEPSEEK
+  # Провайдер для векторного хранилища: OPENAI (облако) или LOCAL (pgvector)
+  vector-store-provider: ${VECTOR_STORE_PROVIDER:LOCAL}
+  # Провайдер для LLM: OPENAI (CORPORATE — в разработке)
   llm-provider: ${LLM_PROVIDER:OPENAI}
   openai:
     vector-store-id: ${OPENAI_VECTOR_STORE_ID:vs_68e649a20d0c8191aaa619e4edeeb03a}
-  # Конфигурация для DeepSeek LLM (использует OpenAI-совместимый API)
-  deepseek:
-    api-key: ${DEEPSEEK_API_KEY:}
-    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
-    model: ${DEEPSEEK_MODEL:deepseek-chat}
   # Конфигурация для локального векторного хранилища (pgvector)
   vector-store:
     table-name: document_embeddings
-    embedding-dimensions: 1536  # Размерность для OpenAI text-embedding-ada-002
+    embedding-dimensions: 768  # Размерность для Ollama nomic-embed-text
 
 # JWT конфигурация
 jwt:

@@ -3,6 +3,7 @@ package com.example.workflow;
 import com.example.portal.auth.entity.User;
 import com.example.portal.auth.repository.UserRepository;
 import com.example.portal.shared.service.LocalVectorStoreService;
+import com.example.portal.shared.service.VectorizationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,8 +17,10 @@ import java.util.*;
 
 /**
  * REST контроллер для управления локальным векторным хранилищем.
- * Позволяет добавлять, удалять и искать документы в векторном хранилище.
- * Операции записи (POST, DELETE) доступны только администраторам.
+ * <p>
+ * Векторизация (добавление документов) — через VectorizationService.
+ * Поиск, список, удаление — через LocalVectorStoreService.
+ * </p>
  */
 @RestController
 @RequestMapping("/api/vector-store")
@@ -25,9 +28,7 @@ import java.util.*;
 @Slf4j
 public class VectorStoreController {
 
-    private static final int CHUNK_SIZE = 2500;
-    private static final int CHUNK_OVERLAP = 200;
-
+    private final VectorizationService vectorizationService;
     private final LocalVectorStoreService vectorStoreService;
     private final UserRepository userRepository;
     
@@ -81,7 +82,7 @@ public class VectorStoreController {
                     .body(Map.of("error", "Доступ запрещён. Требуются права администратора."));
         }
         try {
-            UUID id = vectorStoreService.addDocument(request.content(), request.metadata());
+            UUID id = vectorizationService.addDocument(request.content(), request.metadata());
             return ResponseEntity.ok(Map.of(
                     "id", id.toString(),
                     "message", "Document added successfully"
@@ -107,7 +108,7 @@ public class VectorStoreController {
                     .body(Map.of("error", "Доступ запрещён. Требуются права администратора."));
         }
         try {
-            List<UUID> ids = vectorStoreService.addDocuments(request.documents());
+            List<UUID> ids = vectorizationService.addDocuments(request.documents());
             return ResponseEntity.ok(Map.of(
                     "ids", ids.stream().map(UUID::toString).toList(),
                     "count", ids.size(),
@@ -139,24 +140,16 @@ public class VectorStoreController {
         }
         try {
             List<UUID> ids = new ArrayList<>();
-            int totalChunks = 0;
             for (MultipartFile file : files) {
                 if (file.isEmpty()) continue;
                 String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
                 String content = new String(file.getBytes(), StandardCharsets.UTF_8);
-                List<String> chunks = chunkText(content, CHUNK_SIZE, CHUNK_OVERLAP);
-                for (int i = 0; i < chunks.size(); i++) {
-                    Map<String, Object> metadata = new HashMap<>();
-                    metadata.put("source", filename);
-                    metadata.put("chunk", i);
-                    UUID id = vectorStoreService.addDocument(chunks.get(i), metadata);
-                    ids.add(id);
-                    totalChunks++;
-                }
+                List<UUID> chunkIds = vectorizationService.uploadFromFile(filename, content);
+                ids.addAll(chunkIds);
             }
             return ResponseEntity.ok(Map.of(
                     "ids", ids.stream().map(UUID::toString).toList(),
-                    "count", totalChunks,
+                    "count", ids.size(),
                     "message", "Files uploaded and vectorized successfully"
             ));
         } catch (Exception e) {
@@ -232,22 +225,6 @@ public class VectorStoreController {
         return userRepository.findByUsername(username).orElse(null);
     }
 
-    private List<String> chunkText(String text, int chunkSize, int overlap) {
-        if (text == null || text.isEmpty()) {
-            return List.of();
-        }
-        List<String> chunks = new ArrayList<>();
-        int pos = 0;
-        int step = chunkSize - overlap;
-        while (pos < text.length()) {
-            int end = Math.min(pos + chunkSize, text.length());
-            chunks.add(text.substring(pos, end));
-            if (end >= text.length()) break;
-            pos += step;
-        }
-        return chunks;
-    }
-    
     // DTOs для запросов
     public record AddDocumentRequest(String content, Map<String, Object> metadata) {}
     public record BatchAddRequest(List<String> documents) {}

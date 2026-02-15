@@ -2,7 +2,7 @@ package com.example.portal.shared.service;
 
 /**
  * Интерфейс для работы с LLM (Large Language Models).
- * Абстракция для работы с различными провайдерами LLM (OpenAI, DeepSeek и т.д.).
+ * Абстракция для работы с различными провайдерами LLM (OpenAI, корпоративные и т.д.).
  */
 public interface LlmService {
     

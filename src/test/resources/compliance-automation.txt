@@ -1,0 +1,981 @@
+= Архитектурное видение системы "Compliance Automation"
+:toc:
+:toclevels: 4
+:sectnums:
+
+== 1. Цель проекта
+
+Система автоматизации комплаенс-функции компании предназначена для:
+* централизованного учёта и контроля обращений (issues);
+* регистрации подарков и взаимодействий с контрагентами;
+* автоматизации проверки сотрудников и компаний;
+* генерации отчётов и уведомлений;
+* интеграции с кадровой системой и брокером сообщений Kafka.
+
+Проект является учебным примером для курса «Системный анализ: от идеи до реализации» и демонстрирует полный цикл разработки.
+
+== 2. Видение
+
+Система реализует модель **микросервисной архитектуры** на Java Spring Boot с разделением по доменным областям.  
+Каждый микросервис автономен и взаимодействует через REST и Kafka-сообщения.
+
+Основные принципы:
+* Минимальные зависимости между сервисами.
+* Общая шина событий для обмена данными.
+* Независимое масштабирование по нагрузке.
+* Конфигурации через Spring Cloud Config и .env-переменные.
+
+== 3. Архитектурная схема
+
+[plantuml, arch-overview, png]
+----
+@startuml
+!theme plain
+title Архитектура системы Compliance Automation
+
+package "Frontend" {
+  [Web Portal] - [REST API Gateway]
+  [Telegram Bot] - [REST API Gateway]
+}
+
+package "Backend" {
+  [Auth Service] --> [User DB]
+  [Issue Service] --> [Issue DB]
+  [Gift Service] --> [Gift DB]
+  [Notification Service] --> [Kafka Broker]
+  [Integration Service] --> [HR System]
+}
+
+[REST API Gateway] --> [Auth Service]
+[REST API Gateway] --> [Issue Service]
+[REST API Gateway] --> [Gift Service]
+[Issue Service] --> [Notification Service]
+[Gift Service] --> [Notification Service]
+[Notification Service] --> [Kafka Broker]
+[Integration Service] --> [Kafka Broker]
+@enduml
+----
+
+== 4. Архитектурные слои
+
+[cols="1,3"]
+|===
+| Слой | Назначение
+| Presentation | Web-интерфейс, Telegram-бот, REST API
+| Application | Сервисы бизнес-логики
+| Domain | Модели предметной области, DTO, валидаторы
+| Infrastructure | Репозитории, Kafka, интеграции
+| Security | JWT-аутентификация, роли и права
+| Monitoring | Actuator, Prometheus, Grafana
+|===
+
+== 5. Основные сервисы
+
+=== 5.1 Auth Service
+Регистрирует пользователей, выдает JWT-токены, управляет ролями (Employee, Officer, Admin).
+
+=== 5.2 Issue Service
+Хранит и обрабатывает комплаенс-заявки: `id`, `document_number`, `event_date`, `status`, `officer_id`.
+
+=== 5.3 Gift Service
+Учет подарков и взаимодействий: проверка допустимости, уведомления, регистрация факта.
+
+=== 5.4 Notification Service
+Асинхронная рассылка сообщений через Kafka, Email, Telegram.
+
+=== 5.5 Integration Service
+Интеграции с HR и другими внешними системами (REST / SOAP адаптеры).
+
+== 6. Используемые технологии
+
+[cols="2,3"]
+|===
+| Компонент | Технология
+| Backend | Spring Boot 3.3, Java 21, Gradle
+| DB | PostgreSQL 15
+| Messaging | Kafka 3.7
+| Auth | Spring Security + JWT
+| Frontend | React + Bootstrap
+| API Docs | OpenAPI / Swagger
+| Containerization | Docker Compose
+| Logging | Logback + ELK Stack
+| Monitoring | Prometheus + Grafana
+|===
+
+== 7. Безопасность
+
+* Авторизация через JWT.
+* Роли: `EMPLOYEE`, `OFFICER`, `ADMIN`.
+* Пароли хэшируются через BCrypt.
+* Шифрование конфиденциальных данных AES-256.
+
+== 8. Нефункциональные требования
+
+[cols="2,4"]
+|===
+| Параметр | Требование
+| Производительность | ≤ 300 мс для REST-запроса
+| Масштабируемость | Горизонтальная для сервисов Issue/Notification
+| Отказоустойчивость | ≥ 99.5%
+| Конфиденциальность | Данные сотрудников защищены
+| Аудит | Логирование всех действий
+|===
+
+== 9. План развития
+
+* Добавление AI-агента для классификации обращений.
+* Интеграция с FastText для поиска по статьям.
+* Визуальные отчёты KPI в Grafana.
+= Руководство пользователя системы Compliance Automation
+:toc:
+:toclevels: 3
+:sectnums:
+
+== 1. Введение
+
+Система предназначена для сотрудников и комплаенс-офицеров компании.  
+Она обеспечивает прозрачность и автоматизацию процессов комплаенса.
+
+== 2. Роли пользователей
+
+[cols="1,3"]
+|===
+| Роль | Возможности
+| Employee | Создание обращений, регистрация подарков, просмотр статуса
+| Officer | Проверка обращений, комментирование, изменение статуса
+| Admin | Управление пользователями, настройками и справочниками
+|===
+
+== 3. Авторизация
+
+Пользователь входит по логину и паролю.  
+После успешного входа система выдает JWT-токен.  
+Время жизни токена — 2 часа.
+
+== 4. Главная страница
+
+После входа отображается личный кабинет с блоками:
+* Последние обращения
+* Статистика статусов
+* Уведомления
+* Меню действий
+
+== 5. Создание обращения
+
+. Нажмите кнопку *Создать обращение*.
+. Укажите:
+  - тип обращения (Подарок, Конфликт интересов и т.д.);
+  - описание события;
+  - дату и место;
+  - при необходимости прикрепите файл.
+. Нажмите *Отправить*.
+
+Система создаст запись и присвоит `document_number`.
+
+== 6. Проверка статуса
+
+В разделе *Мои обращения* отображается таблица:
+
+[cols="1,2,2,2"]
+|===
+| Номер | Тип | Дата | Статус
+| CA-2025-001 | Подарок | 10.11.2025 | На проверке
+|===
+
+== 7. Уведомления
+
+Пользователь получает уведомления:
+* в веб-интерфейсе;
+* в Telegram (при подключении бота);
+* по email (если активирована опция).
+
+== 8. Регистрация подарков
+
+Форма аналогична созданию обращения.  
+Дополнительно указывается:
+* контрагент;
+* стоимость;
+* обоснование.
+
+== 9. Работа комплаенс-офицера
+
+Офицер может:
+* просматривать обращения;
+* назначать ответственного;
+* запрашивать уточнение;
+* изменять статус ("Принято", "Отклонено", "Закрыто").
+
+== 10. Отчёты
+
+В разделе *Отчёты* доступны фильтры по дате, статусу и сотруднику.  
+Экспорт — в CSV, XLSX, PDF.
+
+== 11. Telegram-бот
+
+Имя: `@CrocComplianceBot`  
+Основные команды:
+* `/start` — регистрация пользователя;
+* `/my_issues` — список обращений;
+* `/notify` — включить уведомления;
+* `/help` — справка.
+
+== 12. Настройки профиля
+
+Пользователь может изменить:
+* ФИО, подразделение;
+* язык интерфейса;
+* контактные данные;
+* способ уведомлений.
+= Руководство программиста системы Compliance Automation
+:toc:
+:sectnums:
+
+== 1. Общая структура проекта
+
+[source,plaintext]
+----
+compliance-system/
+ ├── api-gateway/
+ ├── auth-service/
+ ├── issue-service/
+ ├── gift-service/
+ ├── notification-service/
+ ├── integration-service/
+ ├── frontend/
+ ├── docker-compose.yml
+ └── docs/
+----
+
+== 2. Технологии
+
+* Java 21
+* Spring Boot 3.3
+* Spring Security / JWT
+* JOOQ / PostgreSQL
+* Kafka
+* OpenAPI 3
+* Gradle 8
+* Docker Compose
+
+== 3. Настройка окружения
+
+Создай `.env` в корне:
+
+[source,properties]
+----
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=admin
+POSTGRES_DB=compliance
+OPENAI_API_KEY=sk-*****
+JWT_SECRET=*****
+----
+
+== 4. Пример application.yml
+
+[source,yaml]
+----
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/compliance
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+  kafka:
+    bootstrap-servers: localhost:9092
+----
+
+== 5. Схема базы данных (Issue Service)
+
+[plantuml, db-schema, png]
+----
+@startuml
+entity "issues" {
+  * id : UUID
+  * document_number : VARCHAR
+  * event_date : DATE
+  * issue_type : VARCHAR
+  * status : VARCHAR
+  * officer_id : UUID
+  * created_at : TIMESTAMP
+}
+entity "users" {
+  * id : UUID
+  * username : VARCHAR
+  * role : VARCHAR
+}
+issues }o--|| users : "assigned_to"
+@enduml
+----
+
+== 6. API примеры
+
+=== 6.1 Создание обращения
+[source,http]
+----
+POST /api/issues
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "issueType": "Gift",
+  "description": "Получен подарок от поставщика",
+  "eventDate": "2025-11-10"
+}
+----
+
+Ответ:
+[source,json]
+----
+{
+  "documentNumber": "CA-2025-001",
+  "status": "На проверке"
+}
+----
+
+=== 6.2 Список обращений
+[source,http]
+----
+GET /api/issues?status=active
+----
+
+Ответ:
+[source,json]
+----
+[
+  {"id":"1","type":"Gift","status":"На проверке"},
+  {"id":"2","type":"Conflict","status":"Закрыто"}
+]
+----
+
+== 7. Kafka топики
+
+[cols="2,3"]
+|===
+| Топик | Назначение
+| issue.created | Отправляется после создания обращения
+| issue.updated | Обновление статуса
+| gift.registered | Новый подарок
+| notify.send | Отправка уведомлений
+|===
+
+== 8. Логирование
+
+Логи пишутся в `/var/log/compliance/*.log`  
+Формат JSON, отправка в ELK-стек.
+
+== 9. Тестирование
+
+* Unit-тесты: JUnit 5, Mockito.
+* Интеграционные тесты: Testcontainers + PostgreSQL + Kafka.
+* Coverage: ≥ 80 %.
+
+== 10. CI/CD
+
+* GitHub Actions:
+  - build, test, sonar, docker push.
+* Docker Compose для dev-окружения.
+* Deployment в Kubernetes (Helm chart).
+
+== 11. Мониторинг
+
+* `/actuator/health`
+* `/actuator/metrics`
+* Grafana dashboards:
+  - issues per day
+  - average processing time
+  - notification failures
+== 12. REST API: Issues & Gifts (CRUD)
+
+:sectnums!:
+[NOTE]
+====
+Базовый URL (dev): `http://localhost:8080`
+Шлюз: `api-gateway` проксирует `/api/**` на сервисы.
+
+Требуемые заголовки:
+* `Authorization: Bearer <JWT>`
+* `Content-Type: application/json`
+* `Accept: application/json`
+====
+
+[IMPORTANT]
+====
+Версионирование ресурсов на обновление/удаление — через `ETag` + `If-Match`.  
+Идемпотентность создания — через `Idempotency-Key`.
+====
+
+=== 12.1 Общие соглашения
+
+==== 12.1.1 Формат ошибок
+
+[source,json]
+----
+{
+  "timestamp": "2025-11-10T12:34:56Z",
+  "traceId": "2f7a1c7b2b1c4...",
+  "status": 422,
+  "error": "Unprocessable Entity",
+  "code": "VALIDATION_ERROR",
+  "message": "Поле 'issueType' недопустимо",
+  "details": [
+    {"field": "issueType", "message": "Должно быть одним из [GIFT, CONFLICT, OTHER]"}
+  ]
+}
+----
+
+Коды ошибок (не исчерпывающе):
+[cols="1,3"]
+|===
+| Код | Описание
+| 400 | Неверный запрос
+| 401 | Неавторизован
+| 403 | Нет прав
+| 404 | Не найдено
+| 409 | Конфликт версий / дубликат
+| 412 | Предусловие не выполнено (ETag)
+| 422 | Ошибка валидации
+| 429 | Слишком много запросов
+| 500 | Внутренняя ошибка
+|===
+
+==== 12.1.2 Пагинация, фильтры, сортировка
+
+* Параметры: `page` (начиная с 0), `size` (по умолчанию 20, максимум 200).
+* Сортировка: `sort=field,(asc|desc)`; несколько сортировок разрешены.
+* Фильтры по полям через query-параметры (см. эндпоинты).
+
+Пример ответа-страницы:
+
+[source,json]
+----
+{
+  "content": [ /* объекты */ ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 127,
+  "totalPages": 7,
+  "sort": ["eventDate,desc","status,asc"]
+}
+----
+
+==== 12.1.3 Безопасность и роли
+
+[cols="1,3"]
+|===
+| Роль | Доступ
+| EMPLOYEE | Создавать/просматривать свои объекты
+| OFFICER | Просматривать/редактировать в зоне ответственности
+| ADMIN | Полный доступ
+|===
+
+JWT Claims: `sub`, `roles`, необяз.: `deptId`, `employeeId`.
+
+==== 12.1.4 Идемпотентность
+
+При `POST` разрешён заголовок `Idempotency-Key` (UUID).  
+Повторный запрос с тем же ключом возвращает исходный результат, либо `409` при конфликте тела.
+
+==== 12.1.5 ETag / If-Match
+
+`GET` возвращает `ETag` (хеш версии).  
+`PUT/PATCH/DELETE` требуют `If-Match: "<etag>"`. Иначе `412 Precondition Failed`.
+
+:sectnums:
+
+=== 12.2 Модель: Issue (Обращение)
+
+[cols="1,3,2"]
+|===
+| Поле | Описание | Пример
+| id | UUID | "cb3f1c4b-...-4f7b"
+| documentNumber | Уникальный человекочитаемый номер | "CA-2025-000123"
+| issueType | Тип: `GIFT`, `CONFLICT`, `OTHER` | "GIFT"
+| description | Текст до 4000 символов | "Получен подарок от поставщика..."
+| eventDate | ISO-8601 (дата) | "2025-11-10"
+| status | `NEW`, `IN_REVIEW`, `APPROVED`, `REJECTED`, `CLOSED` | "IN_REVIEW"
+| employeeId | UUID автора | "8b1d..."
+| officerId | UUID ответственного офицера (опц.) | "93af..."
+| attachments | Список приложений (id, name, url) | [{"id":"..."}]
+| createdAt / updatedAt | ISO-8601 | "2025-11-10T08:00:00Z"
+| version | Целая версия (для ETag) | 5
+|===
+
+Валидации:
+* `issueType` — обязателен, из допустимых значений.
+* `description` — 1..4000.
+* `eventDate` — не в будущем > 30 дней (правило курса).
+* `employeeId` — берётся из токена или тела (валидируется на совпадение).
+
+=== 12.3 Модель: Gift (Подарок)
+
+[cols="1,3,2"]
+|===
+| Поле | Описание | Пример
+| id | UUID | "2b5e..."
+| documentNumber | Номер | "GA-2025-000045"
+| employeeId | UUID дарополучателя | "8b1d..."
+| counterparty | Название контрагента | "OOO Ромашка"
+| estimatedValue | Денежная оценка (>=0) | 150.0
+| currency | ISO 4217 | "KZT"
+| justification | Обоснование | "Сувенир на конференции"
+| eventDate | Дата события | "2025-11-03"
+| status | `REPORTED`, `ALLOWED`, `LIMIT_EXCEEDED`, `REJECTED`, `CLOSED` | "REPORTED"
+| relatedIssueId | UUID связанного обращения (опц.) | "cb3f..."
+| createdAt / updatedAt | ISO-8601 | "2025-11-10T08:00:00Z"
+| version | Целая | 3
+|===
+
+Валидации:
+* `estimatedValue` >= 0.
+* `currency` ∈ справочника.
+* Бизнес-правило курса: если `estimatedValue > 200.00 KZT` — автостатус `LIMIT_EXCEEDED` + уведомление офицеру.
+
+=== 12.4 Эндпоинты: Issues
+
+:base:/api/issues
+
+==== 12.4.1 Создание обращения (Create)
+`POST {base}`
+
+Запрос:
+[source,json]
+----
+{
+  "issueType": "GIFT",
+  "description": "Получен подарок от поставщика X",
+  "eventDate": "2025-11-10",
+  "officerId": "93af2f31-......" // опционально
+}
+----
+
+Заголовки:  
+`Idempotency-Key: 6eaf8c9e-6a2b-43ac-9a71-9b5f1f4b8e11`
+
+Ответ `201 Created`:
+[source,json]
+----
+{
+  "id": "cb3f1c4b-....",
+  "documentNumber": "CA-2025-000123",
+  "issueType": "GIFT",
+  "description": "Получен подарок...",
+  "eventDate": "2025-11-10",
+  "status": "NEW",
+  "employeeId": "8b1d...",
+  "officerId": "93af...",
+  "attachments": [],
+  "createdAt": "2025-11-10T08:10:00Z",
+  "updatedAt": "2025-11-10T08:10:00Z",
+  "version": 1
+}
+----
+Заголовки: `ETag: "v1_9d1c..."`, `Location: /api/issues/cb3f1c4b-...`
+
+События:
+* Kafka: `issue.created` (payload см. §12.7)
+
+Ошибки: `400/401/403/422/429/500`.
+
+`curl`:
+[source,bash]
+----
+curl -X POST http://localhost:8080/api/issues \
+ -H "Authorization: Bearer $TOKEN" \
+ -H "Content-Type: application/json" \
+ -H "Idempotency-Key: $(uuidgen)" \
+ -d '{"issueType":"GIFT","description":"Получен подарок","eventDate":"2025-11-10"}'
+----
+
+==== 12.4.2 Получить страницу обращений (Read list)
+`GET {base}`
+
+Параметры:
+* `page`, `size`
+* Фильтры: `status`, `issueType`, `fromDate`, `toDate`, `employeeId`, `officerId`, `q` (полнотекстовый, простая форма)
+* `sort` (например, `eventDate,desc`)
+
+Ответ `200 OK`: страница (см. §12.1.2).
+
+==== 12.4.3 Получить одно обращение (Read one)
+`GET {base}/{id}` → `200 OK`
+
+Заголовки: `ETag: "v5_..."`
+
+Ошибки: `404`.
+
+==== 12.4.4 Полное обновление (Update)
+`PUT {base}/{id}`
+
+Требует `If-Match`:
+[source,http]
+----
+If-Match: "v5_9d1c..."
+----
+
+Тело — вся сущность (кроме серверных полей). Успех: `200 OK`, новый `ETag`.
+
+Ошибки: `400/401/403/404/412/422`.
+
+==== 12.4.5 Частичное обновление статуса (Patch)
+`PATCH {base}/{id}/status`
+
+Запрос:
+[source,json]
+----
+{
+  "status": "IN_REVIEW",
+  "comment": "Назначено офицеру",
+  "reasonCode": "AUTO_RULE_LIMIT"
+}
+----
+Успех: `200 OK`, событие `issue.updated`.
+
+==== 12.4.6 Удаление (Delete)
+`DELETE {base}/{id}` с `If-Match`.
+
+Ответ: `204 No Content`. Ошибки: `404/412`.
+
+==== 12.4.7 Загрузка/линк вложений
+`POST {base}/{id}/attachments` (мультичасть *или* JSON-ссылка на объект в MinIO/S3).  
+Ответ: `201 Created` + обновлённый список вложений.
+
+=== 12.5 Эндпоинты: Gifts
+
+:base:/api/gifts
+
+==== 12.5.1 Создать подарок (Create)
+`POST {base}` (+ `Idempotency-Key`)
+
+Запрос:
+[source,json]
+----
+{
+  "employeeId": "8b1d...",
+  "counterparty": "OOO Romashka",
+  "estimatedValue": 150.0,
+  "currency": "KZT",
+  "justification": "Сувенир на конференции",
+  "eventDate": "2025-11-03",
+  "relatedIssueId": "cb3f1c4b-...."
+}
+----
+
+Ответ `201 Created`:
+[source,json]
+----
+{
+  "id": "2b5e...",
+  "documentNumber": "GA-2025-000045",
+  "status": "REPORTED",
+  "autoRules": {"limitExceeded": false},
+  "version": 1
+}
+----
+
+Бизнес-правило: если `estimatedValue > 200`, статус `LIMIT_EXCEEDED`, плюс событие в Kafka.
+
+==== 12.5.2 Список подарков
+`GET {base}?page=0&size=20&employeeId=...&status=...&fromDate=...&toDate=...&q=...&sort=eventDate,desc`
+
+`200 OK` страница.
+
+==== 12.5.3 Получить один подарок
+`GET {base}/{id}` → `200 OK`, с `ETag`.
+
+==== 12.5.4 Обновить подарок
+`PUT {base}/{id}` (+ `If-Match`), `200 OK`.
+
+==== 12.5.5 Обновить статус подарка
+`PATCH {base}/{id}/status`
+[source,json]
+----
+{"status":"ALLOWED","comment":"Ниже лимита"}
+----
+`200 OK`; событие `gift.updated`.
+
+==== 12.5.6 Удалить подарок
+`DELETE {base}/{id}` (+ `If-Match`) → `204`.
+
+=== 12.6 Примеры валидаций и ответы
+
+* `422 VALIDATION_ERROR` при пустом `description` или `justification`.
+* `409 DUPLICATE` если `Idempotency-Key` уже использован с другим телом.
+* `403` если EMPLOYEE запрашивает чужой объект (без прав).
+
+=== 12.7 Kafka события (контракты)
+
+Топики:
+[cols="2,3"]
+|===
+| issue.created | Эмитится после успешного `POST /api/issues`
+| issue.updated | Любое изменение статуса/контента
+| gift.created | После `POST /api/gifts`
+| gift.updated | Изменение статуса/контента
+|===
+
+Payload `issue.created`:
+[source,json]
+----
+{
+  "eventType": "issue.created",
+  "id": "cb3f1c4b-...",
+  "documentNumber": "CA-2025-000123",
+  "issueType": "GIFT",
+  "status": "NEW",
+  "employeeId": "8b1d...",
+  "officerId": "93af...",
+  "eventDate": "2025-11-10",
+  "occurredAt": "2025-11-10T08:10:01Z",
+  "traceId": "2f7a1c7b..."
+}
+----
+
+Payload `gift.created`:
+[source,json]
+----
+{
+  "eventType": "gift.created",
+  "id": "2b5e...",
+  "documentNumber": "GA-2025-000045",
+  "employeeId": "8b1d...",
+  "counterparty": "OOO Romashka",
+  "estimatedValue": 150.0,
+  "currency": "KZT",
+  "status": "REPORTED",
+  "relatedIssueId": "cb3f1c4b-...",
+  "occurredAt": "2025-11-10T09:00:00Z",
+  "traceId": "b81b5..."
+}
+----
+
+=== 12.8 Политика статусов
+
+==== 12.8.1 Issue
+[plantuml, issue-status, png]
+----
+@startuml
+[*] --> NEW
+NEW --> IN_REVIEW : назначен офицер
+IN_REVIEW --> APPROVED : решение положительное
+IN_REVIEW --> REJECTED : решение отрицательное
+APPROVED --> CLOSED
+REJECTED --> CLOSED
+@enduml
+----
+
+==== 12.8.2 Gift
+[plantuml, gift-status, png]
+----
+@startuml
+[*] --> REPORTED
+REPORTED --> LIMIT_EXCEEDED : value > 200 KZT
+REPORTED --> ALLOWED : проверено офицером
+LIMIT_EXCEEDED --> REJECTED
+ALLOWED --> CLOSED
+REJECTED --> CLOSED
+@enduml
+----
+
+=== 12.9 Примеры `curl`
+
+Получить обращения сотрудника за последний месяц, отсортировать по дате:
+[source,bash]
+----
+curl -s "http://localhost:8080/api/issues?employeeId=$EMP&fromDate=2025-10-10&toDate=2025-11-10&sort=eventDate,desc" \
+ -H "Authorization: Bearer $TOKEN"
+----
+
+Частично обновить статус с оптимистичной блокировкой:
+[source,bash]
+----
+ETAG=$(curl -sI http://localhost:8080/api/issues/$ID -H "Authorization: Bearer $TOKEN" | grep ETag | awk '{print $2}' | tr -d '\r')
+curl -X PATCH http://localhost:8080/api/issues/$ID/status \
+ -H "Authorization: Bearer $TOKEN" \
+ -H "If-Match: $ETAG" \
+ -H "Content-Type: application/json" \
+ -d '{"status":"IN_REVIEW","comment":"Назначено"}'
+----
+
+=== 12.10 OpenAPI 3.0 (фрагмент)
+
+[source,yaml]
+----
+openapi: 3.0.3
+info:
+  title: Compliance Automation API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/issues:
+    get:
+      summary: List issues
+      parameters:
+        - in: query; name: page; schema: {type: integer, minimum: 0}
+        - in: query; name: size; schema: {type: integer, minimum: 1, maximum: 200}
+        - in: query; name: status; schema: {type: string, enum: [NEW,IN_REVIEW,APPROVED,REJECTED,CLOSED]}
+        - in: query; name: issueType; schema: {type: string, enum: [GIFT,CONFLICT,OTHER]}
+        - in: query; name: fromDate; schema: {type: string, format: date}
+        - in: query; name: toDate; schema: {type: string, format: date}
+        - in: query; name: employeeId; schema: {type: string, format: uuid}
+        - in: query; name: officerId; schema: {type: string, format: uuid}
+        - in: query; name: q; schema: {type: string}
+        - in: query; name: sort; schema: {type: string}
+      responses:
+        '200': {description: OK}
+        '401': {description: Unauthorized}
+    post:
+      summary: Create issue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/IssueCreate'}
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema: {type: string}
+      responses:
+        '201': {description: Created}
+        '400': {description: Bad Request}
+        '401': {description: Unauthorized}
+        '422': {description: Validation Error}
+  /api/issues/{id}:
+    get:
+      summary: Get issue
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+      responses:
+        '200': {description: OK, headers: {ETag: {schema: {type: string}}}}
+        '404': {description: Not Found}
+    put:
+      summary: Replace issue
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+        - in: header; name: If-Match; required: true; schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/IssueUpdate'}}}
+      responses:
+        '200': {description: OK}
+        '412': {description: Precondition Failed}
+        '422': {description: Validation Error}
+    delete:
+      summary: Delete issue
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+        - in: header; name: If-Match; required: true; schema: {type: string}
+      responses:
+        '204': {description: No Content}
+        '412': {description: Precondition Failed}
+  /api/issues/{id}/status:
+    patch:
+      summary: Update issue status
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+        - in: header; name: If-Match; required: false; schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/IssueStatusPatch'}}}
+      responses:
+        '200': {description: OK}
+        '404': {description: Not Found}
+  /api/gifts:
+    get:
+      summary: List gifts
+      parameters:
+        - in: query; name: page; schema: {type: integer}
+        - in: query; name: size; schema: {type: integer}
+        - in: query; name: employeeId; schema: {type: string, format: uuid}
+        - in: query; name: status; schema: {type: string, enum: [REPORTED,ALLOWED,LIMIT_EXCEEDED,REJECTED,CLOSED]}
+        - in: query; name: fromDate; schema: {type: string, format: date}
+        - in: query; name: toDate; schema: {type: string, format: date}
+        - in: query; name: q; schema: {type: string}
+        - in: query; name: sort; schema: {type: string}
+      responses:
+        '200': {description: OK}
+    post:
+      summary: Create gift
+      parameters:
+        - in: header; name: Idempotency-Key; schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/GiftCreate'}}}
+      responses:
+        '201': {description: Created}
+        '422': {description: Validation Error}
+  /api/gifts/{id}:
+    get:
+      summary: Get gift
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+      responses:
+        '200': {description: OK, headers: {ETag: {schema: {type: string}}}}
+        '404': {description: Not Found}
+    put:
+      summary: Replace gift
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+        - in: header; name: If-Match; required: true; schema: {type: string}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/GiftUpdate'}}}
+      responses:
+        '200': {description: OK}
+        '412': {description: Precondition Failed}
+    delete:
+      summary: Delete gift
+      parameters:
+        - in: path; name: id; required: true; schema: {type: string, format: uuid}
+        - in: header; name: If-Match; required: true; schema: {type: string}
+      responses:
+        '204': {description: No Content}
+components:
+  schemas:
+    IssueCreate:
+      type: object
+      required: [issueType, description, eventDate]
+      properties:
+        issueType: {type: string, enum: [GIFT,CONFLICT,OTHER]}
+        description: {type: string, minLength: 1, maxLength: 4000}
+        eventDate: {type: string, format: date}
+        officerId: {type: string, format: uuid}
+    IssueUpdate:
+      allOf:
+        - $ref: '#/components/schemas/IssueCreate'
+      properties:
+        status: {type: string, enum: [NEW,IN_REVIEW,APPROVED,REJECTED,CLOSED]}
+    IssueStatusPatch:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [NEW,IN_REVIEW,APPROVED,REJECTED,CLOSED]}
+        comment: {type: string, maxLength: 1000}
+        reasonCode: {type: string, maxLength: 128}
+    GiftCreate:
+      type: object
+      required: [employeeId,counterparty,estimatedValue,currency,eventDate,justification]
+      properties:
+        employeeId: {type: string, format: uuid}
+        counterparty: {type: string, minLength: 1, maxLength: 255}
+        estimatedValue: {type: number, minimum: 0}
+        currency: {type: string, minLength: 3, maxLength: 3}
+        justification: {type: string, minLength: 1, maxLength: 2000}
+        eventDate: {type: string, format: date}
+        relatedIssueId: {type: string, format: uuid, nullable: true}
+    GiftUpdate:
+      allOf:
+        - $ref: '#/components/schemas/GiftCreate'
+      properties:
+        status: {type: string, enum: [REPORTED,ALLOWED,LIMIT_EXCEEDED,REJECTED,CLOSED]}
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+----

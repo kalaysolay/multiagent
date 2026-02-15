@@ -3,6 +3,7 @@ package com.example.workflow;
 import com.example.portal.auth.entity.User;
 import com.example.portal.auth.repository.UserRepository;
 import com.example.portal.shared.service.LocalVectorStoreService;
+import com.example.portal.shared.service.VectorizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +15,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +34,9 @@ import static org.mockito.Mockito.*;
  */
 @ExtendWith(MockitoExtension.class)
 class VectorStoreControllerTest {
+
+    @Mock
+    private VectorizationService vectorizationService;
 
     @Mock
     private LocalVectorStoreService vectorStoreService;
@@ -123,7 +129,7 @@ class VectorStoreControllerTest {
     void addDocument_admin_returnsOk() {
         setAuthenticatedUser("admin", "ROLE_ADMIN");
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-        when(vectorStoreService.addDocument(anyString(), any())).thenReturn(testDocId);
+        when(vectorizationService.addDocument(anyString(), any())).thenReturn(testDocId);
 
         var request = new VectorStoreController.AddDocumentRequest("test content", Map.of());
         ResponseEntity<?> response = vectorStoreController.addDocument(request);
@@ -145,7 +151,7 @@ class VectorStoreControllerTest {
         ResponseEntity<?> response = vectorStoreController.addDocument(request);
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
-        verify(vectorStoreService, never()).addDocument(anyString(), any());
+        verify(vectorizationService, never()).addDocument(anyString(), any());
     }
 
     @Test
@@ -153,7 +159,7 @@ class VectorStoreControllerTest {
     void addDocumentsBatch_admin_returnsOk() {
         setAuthenticatedUser("admin", "ROLE_ADMIN");
         when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
-        when(vectorStoreService.addDocuments(List.of("a", "b"))).thenReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
+        when(vectorizationService.addDocuments(List.of("a", "b"))).thenReturn(List.of(UUID.randomUUID(), UUID.randomUUID()));
 
         var request = new VectorStoreController.BatchAddRequest(List.of("a", "b"));
         ResponseEntity<?> response = vectorStoreController.addDocumentsBatch(request);
@@ -175,7 +181,7 @@ class VectorStoreControllerTest {
         ResponseEntity<?> response = vectorStoreController.addDocumentsBatch(request);
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
-        verify(vectorStoreService, never()).addDocuments(anyList());
+        verify(vectorizationService, never()).addDocuments(anyList());
     }
 
     @Test
@@ -200,5 +206,23 @@ class VectorStoreControllerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
         verify(vectorStoreService, never()).deleteDocument(any());
+    }
+
+    @Test
+    @DisplayName("POST /documents/upload — админ успешно загружает файлы (200)")
+    void uploadDocuments_admin_returnsOk() throws Exception {
+        setAuthenticatedUser("admin", "ROLE_ADMIN");
+        when(userRepository.findByUsername("admin")).thenReturn(Optional.of(adminUser));
+        MultipartFile file = mock(MultipartFile.class);
+        when(file.isEmpty()).thenReturn(false);
+        when(file.getOriginalFilename()).thenReturn("test.txt");
+        when(file.getBytes()).thenReturn("file content".getBytes(StandardCharsets.UTF_8));
+        when(vectorizationService.uploadFromFile(eq("test.txt"), eq("file content")))
+                .thenReturn(List.of(testDocId));
+
+        ResponseEntity<?> response = vectorStoreController.uploadDocuments(new MultipartFile[]{file});
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        verify(vectorizationService).uploadFromFile("test.txt", "file content");
     }
 }

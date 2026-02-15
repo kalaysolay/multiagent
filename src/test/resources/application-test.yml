@@ -1,0 +1,10 @@
+# Тестовый профиль: mock EmbeddingModel заменяет Ollama
+app:
+  vector-store-provider: LOCAL
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true

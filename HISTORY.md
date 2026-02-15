@@ -1,5 +1,69 @@
 # История изменений проекта
 
+## 2026-02-13 — Удаление DeepSeek
+
+### Описание изменений
+Удалена поддержка провайдера LLM DeepSeek. Остаётся только OpenAI; в дальнейшем планируется добавить CORPORATE (корпоративная LLM).
+
+### Удалённые/изменённые файлы
+| Действие | Файл |
+|----------|------|
+| Удалён | `DeepSeekLlmService.java` |
+| Изменён | `AiConfig.java` (удалены deepSeekChatModel, deepSeekChatClient) |
+| Изменён | `application.yml` (удалена секция app.deepseek) |
+| Изменён | `LlmService.java` (обновлён JavaDoc) |
+
+---
+
+## 2026-02-13 — Локальная векторизация на Spring AI
+
+### Описание изменений
+Переход на локальную векторизацию через Spring AI Ollama. Эмбеддинги создаются локально (модель nomic-embed-text), данные не отправляются в облако. Выделены отдельные сервисы VectorizationService и RAG.
+
+### Ключевые изменения
+- **EmbeddingModel (Spring AI)** — заменён кастомный EmbeddingService на Spring AI Ollama (768 измерений)
+- **VectorizationService** — новый сервис: чанкинг (2500 символов, overlap 200), загрузка файлов
+- **LocalVectorStoreService** — переведён на EmbeddingModel, работа с pgvector
+- **LocalRagService** — активируется при `app.vector-store-provider=LOCAL` (вместо DEEPSEEK)
+- **Миграция V11** — таблица document_embeddings пересоздана с vector(768), старые данные удалены
+
+### Зависимости
+- `spring-ai-ollama-spring-boot-starter:1.0.0-M6` — локальные эмбеддинги
+- `testcontainers` (postgresql, junit-jupiter) — интеграционные тесты
+
+### Конфигурация (application.yml)
+- `spring.ai.ollama.base-url` — по умолчанию http://localhost:11434
+- `spring.ai.ollama.embedding.options.model` — nomic-embed-text
+- `app.vector-store-provider: LOCAL` — по умолчанию
+- `app.vector-store.embedding-dimensions: 768`
+
+### Требования к окружению
+- Ollama установлен и запущен (`ollama serve`)
+- Модель эмбеддингов: `ollama pull nomic-embed-text`
+- LLM по-прежнему OpenAI (GPT-3.5-turbo)
+
+### Новые/изменённые файлы
+| Действие | Файл |
+|----------|------|
+| Удалён | `EmbeddingService.java` |
+| Создан | `VectorizationService.java` |
+| Создан | `V11__vector_store_ollama_768.sql` |
+| Изменён | `LocalVectorStoreService.java` (EmbeddingModel) |
+| Изменён | `VectorStoreController.java` (VectorizationService) |
+| Изменён | `LocalRagService.java` (LOCAL вместо DEEPSEEK) |
+| Создан | `LocalVectorStoreServiceTest.java` |
+| Создан | `VectorizationServiceTest.java` |
+| Создан | `LocalVectorStoreIntegrationTest.java` (Testcontainers + pgvector) |
+| Создан | `src/test/resources/compliance-automation.txt` (тестовый документ) |
+
+### Тесты
+- **VectorizationServiceTest** — чанкинг, uploadFromFile, делегирование
+- **LocalVectorStoreServiceTest** — add/search/list/delete с mock EmbeddingModel
+- **VectorStoreControllerTest** — обновлён под VectorizationService
+- **LocalVectorStoreIntegrationTest** — полный цикл: векторизация Compliance Automation → поиск → RAG
+
+---
+
 ## 2026-02-13 — Админка векторизации документов
 
 ### Описание изменений

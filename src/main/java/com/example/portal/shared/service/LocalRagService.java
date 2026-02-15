@@ -7,11 +7,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Реализация RAG сервиса для локального векторного хранилища (PostgreSQL + pgvector).
+ * Реализация RAG (Retrieval-Augmented Generation) для локального векторного хранилища.
+ * <p>
+ * RAG позволяет LLM получать релевантный контекст из документов перед генерацией ответа.
+ * Этот сервис ищет похожие фрагменты в pgvector по семантическому сходству и возвращает
+ * их как контекст для подстановки в промпт.
+ * </p>
+ * <p>
+ * Активируется при {@code app.vector-store-provider=LOCAL}.
+ * </p>
  */
 @Service
 @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
-        name = "app.vector-store-provider", havingValue = "DEEPSEEK"
+        name = "app.vector-store-provider", havingValue = "LOCAL"
 )
 @Slf4j
 public class LocalRagService implements RagService {
@@ -22,6 +30,9 @@ public class LocalRagService implements RagService {
         this.vectorStoreService = vectorStoreService;
     }
     
+    /**
+     * Находит topK наиболее релевантных фрагментов по векторному сходству и объединяет их в один текст.
+     */
     @Override
     public ContextResult retrieveContext(String query, int topK) {
         try {

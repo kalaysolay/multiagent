@@ -174,6 +174,7 @@ public class ToolCallingChatService {
         
         // Добавляем контекст из RAG
         var ragContext = ragService.retrieveContext(userMessage, 3);
+
         if (ragContext.fragmentsCount() > 0) {
             promptBuilder.append("=== Контекст из документации ===\n");
             promptBuilder.append(ragContext.text());

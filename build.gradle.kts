@@ -37,6 +37,9 @@ dependencies {
     // Spring AI для векторных хранилищ (pgvector)
     implementation("org.springframework.ai:spring-ai-pgvector-store-spring-boot-starter:1.0.0-M6")
     
+    // Spring AI Ollama для локальных эмбеддингов
+    implementation("org.springframework.ai:spring-ai-ollama-spring-boot-starter:1.0.0-M6")
+    
     // Flyway для миграций
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
@@ -66,6 +69,11 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    
+    // Testcontainers для интеграционных тестов (PostgreSQL + pgvector)
+    testImplementation("org.testcontainers:testcontainers:1.19.8")
+    testImplementation("org.testcontainers:postgresql:1.19.8")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.8")
 
     annotationProcessor ("org.projectlombok:lombok")
     testCompileOnly ("org.projectlombok:lombok")
