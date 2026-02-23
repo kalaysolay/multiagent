@@ -21,11 +21,16 @@ public class NarrativeWorker implements Worker {
 
     @Override
     public void execute(Context ctx, Map<String, Object> args) {
-        String description = args != null && args.containsKey("description")
-                ? String.valueOf(args.get("description"))
-                : ctx.taskOrGoal();
+        // Описание для нарратива: goal и опционально description из MCP
+        String description = firstNonBlank(
+                args != null ? (String) args.get("description") : null,
+                ctx.goal
+        );
+        String ragQuery = ctx.goal != null && !ctx.goal.isBlank() ? ctx.goal : description;
+        if (ragQuery == null) ragQuery = "";
 
-        var rag = ragService.retrieveContext(description, 4);
+        var rag = ragService.retrieveContext(ragQuery, 4);
+        String ragContext = rag.text();
         ctx.log(String.format("rag.narrative: fragments=%d, vs=%s",
                 rag.fragmentsCount(),
                 rag.vectorStoreAvailable()));
@@ -33,11 +38,19 @@ public class NarrativeWorker implements Worker {
         String generated = narrativeWriter.composeNarrative(
                 description,
                 ctx.goal,
-                rag.text()
+                ragContext
         );
 
         ctx.overrideNarrative(generated);
         ctx.log("narrative.generated: chars=" + generated.length());
+    }
+
+    private static String firstNonBlank(String... values) {
+        if (values == null) return "";
+        for (String v : values) {
+            if (v != null && !v.isBlank()) return v;
+        }
+        return "";
     }
 }
 

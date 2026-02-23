@@ -2,7 +2,6 @@ package com.example.portal.shared.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.embedding.EmbeddingModel;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -15,7 +14,7 @@ import java.util.stream.Collectors;
 /**
  * Сервис для работы с локальным векторным хранилищем на базе PostgreSQL + pgvector.
  * Обеспечивает сохранение и поиск документов по векторному сходству.
- * Использует Spring AI EmbeddingModel (Ollama nomic-embed-text) для создания эмбеддингов.
+ * Использует Spring AI EmbeddingModel (Ollama/OpenAI/Corporate по app.embedding-provider).
  */
 @Service
 @Slf4j
@@ -27,7 +26,7 @@ public class LocalVectorStoreService {
 
     public LocalVectorStoreService(
             JdbcTemplate jdbcTemplate,
-            @Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel,
+            EmbeddingModel embeddingModel,
             @Value("${app.vector-store.table-name:document_embeddings}") String tableName
     ) {
         this.jdbcTemplate = jdbcTemplate;
@@ -58,7 +57,7 @@ public class LocalVectorStoreService {
     @Transactional
     public UUID addDocument(String content, Map<String, Object> metadata) {
         try {
-            // Создаём эмбеддинг через Spring AI (Ollama)
+            // Создаём эмбеддинг через Spring AI
             List<Double> embedding = createEmbedding(content);
             
             // Конвертируем List<Double> в строку для pgvector формата "[1.0,2.0,3.0]"
@@ -111,6 +110,10 @@ public class LocalVectorStoreService {
      */
     public List<DocumentResult> findSimilar(String query, int topK) {
         try {
+            if (query == null || query.isBlank()) {
+                log.debug("Empty query: returning no results");
+                return List.of();
+            }
             // Создаём эмбеддинг для запроса через Spring AI
             List<Double> queryEmbedding = createEmbedding(query);
             String embeddingString = "[" + queryEmbedding.stream()

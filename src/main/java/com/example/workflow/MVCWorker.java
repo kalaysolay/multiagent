@@ -2,7 +2,7 @@ package com.example.workflow;
 
 import com.example.portal.agents.iconix.service.agentservices.MVCModellerService;
 import com.example.portal.agents.iconix.worker.Worker;
-import com.example.portal.shared.service.OpenAiRagService;
+import com.example.portal.shared.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 public class MVCWorker implements Worker {
 
     private final MVCModellerService mvcModeller;
-    private final OpenAiRagService ragService;
+    private final RagService ragService;
 
     @Override
     public String name() {

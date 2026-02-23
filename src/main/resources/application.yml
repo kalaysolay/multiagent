@@ -1,31 +1,48 @@
 server:
   port: 8080
-
+  tomcat:
+    max-swallow-size: 50MB
+    max-http-form-post-size: 50MB
 spring:
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   ai:
     # Выбор провайдера Chat (LLM): openai — для ChatClient, ollama отключаем (используем только для эмбеддингов)
-    model:
-      chat: openai
-      embedding: ollama
+    #model:
+    #chat: openai
+    #embedding: ollama
     openai:
-      api-key: ${OPENAI_API_KEY}
+      base-url: ${AGEN}
+      api-key: ${AGEN_API_KEY}
       chat:
         options:
-          model: gpt-3.5-turbo
-          temperature: 1.0
+          model: gpt-oss-120b
+          maxTokens: 25128
+          temperature: 0.0
+          top-p: 0.5
+          http-headers:
+            systemId: sanduser
+
+      #api-key: ${OPENAI_API_KEY}
+      #chat:
+      #  options:
+      #    model: gpt-3.5-turbo
+      #    temperature: 1.0
     # Ollama для локальных эмбеддингов (векторизация без отправки данных в облако)
     ollama:
-      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      base-url: ${BASEURL}
       embedding:
         options:
-          model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
-  
+          model: Salesforce/SFR-Embedding-Code-400M_R
+      api-key: ${CONTINUE_DEV}
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:iconix_agent_db}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:123qweasd}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -34,24 +51,39 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  
+
   flyway:
     enabled: true
     baseline-on-migrate: true
     out-of-order: true  # Позволяет применять V2 после V3-V10 (V2 был ранее отключён)
     locations: classpath:db/migration
 
+# Приложение: LLM, эмбеддинги, векторное хранилище
 app:
-  # Провайдер для векторного хранилища: OPENAI (облако) или LOCAL (pgvector)
-  vector-store-provider: ${VECTOR_STORE_PROVIDER:LOCAL}
-  # Провайдер для LLM: OPENAI (CORPORATE — в разработке)
+  # Логирование: при true выводит curl-запрос в лог при каждом вызове embedder (для Postman)
+  debug:
+    embedding-curl: ${DEBUG_EMBEDDING_CURL:false}
+  # LLM: OPENAI (DEV) или CORPORATE
   llm-provider: ${LLM_PROVIDER:OPENAI}
-  openai:
-    vector-store-id: ${OPENAI_VECTOR_STORE_ID:vs_68e649a20d0c8191aaa619e4edeeb03a}
-  # Конфигурация для локального векторного хранилища (pgvector)
+  # Эмбеддинги: OLLAMA (768), OPENAI (1536), CORPORATE (1536). API ключи — spring.ai.openai / app.corporate
+  embedding-provider: CUSTOM
+  # Корпоративный API (OpenAI-совместимый) для LLM и эмбеддингов
+
+  custom-embedding:
+    base-url: ${BASEURL}
+    model: Salesforce/SFR-Embedding-Code-400M_R
+    api-key: ${CONTINUE_DEV}
+
+  corporate:
+    base-url: ${BASEURL}
+    api-key: ${CONTINUE_DEV}
+    #chat-model: ${CORPORATE_CHAT_MODEL:gpt-4}
+    embedding-model: Salesforce/SFR-Embedding-Code-400M_R
+    embedding-dimensions: ${CORPORATE_EMBEDDING_DIMENSIONS:1536}
+  # Векторное хранилище — всегда локальный pgvector (document_embeddings)
   vector-store:
     table-name: document_embeddings
-    embedding-dimensions: 768  # Размерность для Ollama nomic-embed-text
+    embedding-dimensions: 768   # OLLAMA (V11). Для OPENAI/CORPORATE — V12 (1536)
 
 # JWT конфигурация
 jwt:

@@ -8,6 +8,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +18,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -26,11 +30,14 @@ class VectorizationServiceTest {
     @Mock
     private LocalVectorStoreService vectorStoreService;
 
+    @Mock
+    private DocumentTextExtractor documentTextExtractor;
+
     private VectorizationService vectorizationService;
 
     @BeforeEach
     void setUp() {
-        vectorizationService = new VectorizationService(vectorStoreService);
+        vectorizationService = new VectorizationService(vectorStoreService, documentTextExtractor);
     }
 
     @Test
@@ -111,5 +118,21 @@ class VectorizationServiceTest {
 
         assertThat(result).isEmpty();
         verify(vectorStoreService, never()).addDocument(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("uploadFromStream вызывает extractor и загружает результат чанками")
+    void uploadFromStream_extractsThenUploads() throws Exception {
+        String extracted = "short text";
+        when(documentTextExtractor.extractText(eq("f.txt"), any(InputStream.class))).thenReturn(extracted);
+        UUID id = UUID.randomUUID();
+        when(vectorStoreService.addDocument(anyString(), anyMap())).thenReturn(id);
+
+        List<UUID> result = vectorizationService.uploadFromStream("f.txt",
+                new ByteArrayInputStream("raw bytes".getBytes(StandardCharsets.UTF_8)));
+
+        assertThat(result).containsExactly(id);
+        verify(documentTextExtractor).extractText(eq("f.txt"), any(InputStream.class));
+        verify(vectorStoreService).addDocument(eq(extracted), anyMap());
     }
 }

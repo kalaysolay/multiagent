@@ -27,9 +27,6 @@ public class WorkflowSession {
     @Column(name = "goal", columnDefinition = "TEXT")
     private String goal;
     
-    @Column(name = "task", columnDefinition = "TEXT")
-    private String task;
-    
     @Column(name = "context_state", columnDefinition = "TEXT")
     private String contextStateJson; // JSON сериализация ctx.state
     

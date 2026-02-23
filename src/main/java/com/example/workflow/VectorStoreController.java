@@ -12,7 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.nio.charset.StandardCharsets;
+import java.io.IOException;
 import java.util.*;
 
 /**
@@ -138,20 +138,27 @@ public class VectorStoreController {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "No files provided"));
         }
+        log.debug("uploadDocuments: received {} file(s). Set app.debug.embedding-curl=true to log curl for embedding API calls", files.length);
         try {
             List<UUID> ids = new ArrayList<>();
             for (MultipartFile file : files) {
                 if (file.isEmpty()) continue;
                 String filename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
-                String content = new String(file.getBytes(), StandardCharsets.UTF_8);
-                List<UUID> chunkIds = vectorizationService.uploadFromFile(filename, content);
+                log.debug("uploadDocuments: processing file={}, size={} bytes", filename, file.getSize());
+                List<UUID> chunkIds = vectorizationService.uploadFromStream(filename, file.getInputStream());
                 ids.addAll(chunkIds);
+                log.debug("uploadDocuments: file {} → {} chunks", filename, chunkIds.size());
             }
+            log.debug("uploadDocuments: success, total chunks={}", ids.size());
             return ResponseEntity.ok(Map.of(
                     "ids", ids.stream().map(UUID::toString).toList(),
                     "count", ids.size(),
                     "message", "Files uploaded and vectorized successfully"
             ));
+        } catch (IOException e) {
+            log.error("Failed to upload documents", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to upload documents: " + e.getMessage()));
         } catch (Exception e) {
             log.error("Failed to upload documents", e);
             return ResponseEntity.internalServerError()

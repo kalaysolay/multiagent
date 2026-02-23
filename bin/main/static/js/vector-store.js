@@ -171,11 +171,24 @@
                 method: 'POST',
                 body: formData
             });
+            const contentType = resp.headers.get('Content-Type') || '';
             if (!resp.ok) {
-                const err = await resp.json();
-                throw new Error(err.error || 'HTTP ' + resp.status);
+                if (contentType.indexOf('application/json') !== -1) {
+                    const err = await resp.json();
+                    throw new Error(err.error || 'HTTP ' + resp.status);
+                }
+                const text = await resp.text();
+                if (text && text.trim().startsWith('<')) {
+                    throw new Error('Сервер вернул страницу вместо ответа (возможно, сессия истекла или файл слишком большой). Обновите страницу и попробуйте снова.');
+                }
+                throw new Error(text || 'HTTP ' + resp.status);
             }
-            const data = await resp.json();
+            let data;
+            try {
+                data = await resp.json();
+            } catch (parseErr) {
+                throw new Error('Сервер вернул неверный ответ. Возможно, сессия истекла — обновите страницу.');
+            }
             showStatus('Загружено документов: ' + (data.count || 0), 'success');
             selectedFiles = [];
             fileInput.value = '';

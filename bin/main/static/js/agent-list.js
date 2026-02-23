@@ -24,11 +24,11 @@ function initNewRequestForm() {
 }
 
 async function createNewRequest() {
-    const narrativeInput = document.getElementById('newNarrativeInput');
-    const narrative = narrativeInput.value.trim();
+    const goalInput = document.getElementById('newNarrativeInput');
+    const goalText = goalInput.value.trim();
     
-    if (!narrative) {
-        alert('Пожалуйста, введите нарратив');
+    if (!goalText) {
+        alert('Пожалуйста, введите цель или запрос');
         return;
     }
     
@@ -48,9 +48,7 @@ async function createNewRequest() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                narrative: narrative,
-                goal: '',
-                task: ''
+                goal: goalText
             })
         });
         

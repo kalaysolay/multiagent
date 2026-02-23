@@ -1,0 +1,12 @@
+# Профиль DEV: OpenAI для LLM и эмбеддингов, pgvector 1536
+# Использование: --spring.profiles.active=dev
+spring:
+  ai:
+    model:
+      chat: openai
+      embedding: openai
+app:
+  llm-provider: OPENAI
+  embedding-provider: OPENAI
+  vector-store:
+    embedding-dimensions: 1536

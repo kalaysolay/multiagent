@@ -3,7 +3,7 @@ package com.example.workflow;
 import com.example.portal.agents.iconix.model.Issue;
 import com.example.portal.agents.iconix.service.agentservices.DomainModellerService;
 import com.example.portal.agents.iconix.worker.Worker;
-import com.example.portal.shared.service.OpenAiRagService;
+import com.example.portal.shared.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public class ModelWorker implements Worker {
 
     private final DomainModellerService modeller;
-    private final OpenAiRagService ragService;
+    private final RagService ragService;
 
     @Override public String name() { return "model"; }
 

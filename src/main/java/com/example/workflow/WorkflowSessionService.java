@@ -33,7 +33,6 @@ public class WorkflowSessionService {
                     .map(existing -> {
                         existing.setNarrative(ctx.narrativeEffective());
                         existing.setGoal(ctx.goal);
-                        existing.setTask(ctx.task);
                         existing.setContextStateJson(serializeState(ctx.state));
                         existing.setLogsJson(serializeLogs(ctx.logs));
                         existing.setPlanJson(serializePlan(plan));
@@ -47,7 +46,6 @@ public class WorkflowSessionService {
                             .requestId(ctx.requestId)
                             .narrative(ctx.narrativeEffective())
                             .goal(ctx.goal)
-                            .task(ctx.task)
                             .contextStateJson(serializeState(ctx.state))
                             .logsJson(serializeLogs(ctx.logs))
                             .planJson(serializePlan(plan))
@@ -147,8 +145,7 @@ public class WorkflowSessionService {
             var ctx = new Worker.Context(
                     session.getRequestId(),
                     session.getNarrative() != null ? session.getNarrative() : "",
-                    session.getGoal() != null ? session.getGoal() : "",
-                    session.getTask() != null ? session.getTask() : ""
+                    session.getGoal() != null ? session.getGoal() : ""
             );
             
             // Восстанавливаем state

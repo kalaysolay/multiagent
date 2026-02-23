@@ -1,0 +1,8 @@
+# Профиль CORPORATE: корпоративная LLM и эмбеддинги (OpenAI-совместимый API)
+# Использование: --spring.profiles.active=corporate
+# Требуется: CORPORATE_BASE_URL, CORPORATE_API_KEY
+app:
+  llm-provider: CORPORATE
+  embedding-provider: CORPORATE
+  vector-store:
+    embedding-dimensions: 1536

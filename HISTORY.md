@@ -1,5 +1,72 @@
 # История изменений проекта
 
+## 2026-02-16 — Удаление OpenAI векторного хранилища
+
+### Описание изменений
+Векторное хранилище всегда локальное — PostgreSQL с pgvector. Облачный OpenAI Vector Store удалён.
+
+### Удалённые файлы
+| Файл | Описание |
+|------|----------|
+| `OpenAiRagService.java` | RAG через OpenAI Vector Stores API |
+| `OpenAiStorageService.java` | Загрузка артефактов в облако (не использовался) |
+
+### Ключевые изменения
+- **LocalRagService** — единственная реализация RagService, всегда активна
+- **RagService** — всегда использует локальный pgvector
+- Удалены `app.vector-store-pov.   ider`, `app.openai.vector-store-id`
+- Обновлены workflow-воркеры: `OpenAiRagService` → `RagService`
+
+### Конфигурация
+- `app.vector-store` — только pgvector (document_embeddings)
+- Комментарии в `application.yml` уточнены
+
+### Тесты
+- `LocalVectorStoreIntegrationTest` — включён, проверяет RAG через pgvector
+
+---
+
+## 2026-02-13 — Две конфигурации: DEV и CORPORATE
+
+### Описание изменений
+Добавлена поддержка двух конфигураций:
+- **DEV** — OpenAI для LLM и эмбеддингов, pgvector 1536 (`--spring.profiles.active=dev`)
+- **CORPORATE** — корпоративная LLM и эмбеддинги (OpenAI-совместимый API), pgvector 1536 (`--spring.profiles.active=corporate`)
+
+### Ключевые изменения
+- **app.embedding-provider**: `OLLAMA` | `OPENAI` | `CORPORATE` — выбор EmbeddingModel
+- **app.llm-provider**: `OPENAI` | `CORPORATE` — выбор ChatModel
+- **CorporateApiConfig** — ChatModel и EmbeddingModel для корпоративного API (base-url, api-key)
+- **CorporateLlmService** — LlmService для CORPORATE
+- **EmbeddingConfig** — переведён на embedding-provider (OLLAMA/OPENAI/CORPORATE)
+- **LocalVectorStoreService** — использует @Primary EmbeddingModel (без жёсткой привязки к Ollama)
+- **Профили** — `application-dev.yml`, `application-corporate.yml`
+- **Миграция V12** — vector(1536) для OPENAI/CORPORATE (после V12 требуется ре-векторизация)
+
+### Конфигурация
+| Профиль | llm-provider | embedding-provider | Размерность |
+|---------|--------------|--------------------|-------------|
+| (default) | OPENAI | OLLAMA | 768 (V11) |
+| dev | OPENAI | OPENAI | 1536 (V12) |
+| corporate | CORPORATE | CORPORATE | 1536 (V12) |
+
+### app.corporate.*
+- `base-url`, `api-key` — обязательны для CORPORATE
+- `chat-model`, `embedding-model`, `embedding-dimensions` — опционально
+
+### Новые/изменённые файлы
+| Действие | Файл |
+|----------|------|
+| Создан | `CorporateApiConfig.java` |
+| Создан | `CorporateLlmService.java` |
+| Создан | `application-dev.yml`, `application-corporate.yml` |
+| Создан | `V12__vector_store_openai_1536.sql` |
+| Изменён | `EmbeddingConfig.java` (embedding-provider) |
+| Изменён | `LocalVectorStoreService.java` (@Primary EmbeddingModel) |
+| Изменён | `application.yml` (app.embedding-provider, app.corporate) |
+
+---
+
 ## 2026-02-13 — Удаление DeepSeek
 
 ### Описание изменений

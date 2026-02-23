@@ -219,10 +219,10 @@ function switchTab(tabName) {
 }
 
 async function sendRequest() {
-    const narrative = document.getElementById('narrativeInput').value.trim();
+    const goalText = document.getElementById('narrativeInput').value.trim();
     
-    if (!narrative) {
-        showStatus('Пожалуйста, введите нарратив', 'error');
+    if (!goalText) {
+        showStatus('Пожалуйста, введите цель или запрос', 'error');
         return;
     }
     
@@ -242,9 +242,7 @@ async function sendRequest() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                narrative: narrative,
-                goal: '',
-                task: ''
+                goal: goalText
             })
         });
         

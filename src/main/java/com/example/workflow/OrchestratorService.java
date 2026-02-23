@@ -34,16 +34,14 @@ public class OrchestratorService {
         
         // Создаем новую сессию
         var ctx = new Worker.Context(requestId,
-                Optional.ofNullable(req.narrative()).orElse(""),
-                Optional.ofNullable(req.goal()).orElse(""),
-                Optional.ofNullable(req.task()).orElse(""));
+                "",
+                Optional.ofNullable(req.goal()).orElse(""));
         // int maxIter = Optional.ofNullable(req.constraints())
         //         .map(WorkflowRequest.Constraints::maxIterations).orElse(6);
 
         log.info("=== Запуск оркестратора ИИ-агента ===");
         log.info("Request ID: {}", requestId);
         log.info("Цель: {}", ctx.goal);
-        log.info("Описание задачи (task): {}", ctx.task);
         log.info("Контекст (narrative): {}", ctx.narrative);
         // log.info("Максимальное количество итераций: {}", maxIter);
 

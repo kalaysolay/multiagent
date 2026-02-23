@@ -82,7 +82,7 @@ public class IconixMCPServer {
      */
     private String getWorkerDescription(Worker worker) {
         return switch(worker.name()) {
-            case "narrative" -> "Генерирует нарратив на основе цели и задачи";
+            case "narrative" -> "Генерирует нарратив на основе цели";
             case "model" -> "Генерирует или дорабатывает ICONIX доменную модель (PlantUML)";
             case "review" -> "Проводит ревью нарратива или модели, возвращает замечания";
             case "usecase" -> "Генерирует диаграмму прецедентов (Use Case) на основе доменной модели";
@@ -111,10 +111,6 @@ public class IconixMCPServer {
         properties.put("goal", Map.of(
             "type", "string",
             "description", "Цель"
-        ));
-        properties.put("task", Map.of(
-            "type", "string",
-            "description", "Описание задачи"
         ));
         
         // Специфичные параметры для разных агентов
@@ -200,9 +196,7 @@ public class IconixMCPServer {
         String requestId = UUID.randomUUID().toString();
         String narrative = (String) arguments.getOrDefault("narrative", "");
         String goal = (String) arguments.getOrDefault("goal", "");
-        String task = (String) arguments.getOrDefault("task", "");
-        
-        return new Worker.Context(requestId, narrative, goal, task);
+        return new Worker.Context(requestId, narrative, goal);
     }
     
     /**

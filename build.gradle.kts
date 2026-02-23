@@ -50,6 +50,9 @@ dependencies {
     // Asciidoctor для рендеринга AsciiDoc в HTML
     implementation("org.asciidoctor:asciidoctorj:2.5.10")
     
+    // Apache POI для извлечения текста из .docx (векторизация)
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    
     // JGit для работы с Git репозиториями
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
     

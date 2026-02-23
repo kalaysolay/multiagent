@@ -135,7 +135,7 @@ class McpAgentToolsTest {
     // ====================================================================
     
     @Test
-    @DisplayName("generateNarrative - генерирует нарратив по цели и задаче")
+    @DisplayName("generateNarrative - генерирует нарратив по цели")
     void generateNarrative_generatesNarrative() {
         // GIVEN
         Map<String, Object> mcpResult = Map.of(
@@ -144,11 +144,13 @@ class McpAgentToolsTest {
         when(mcpServer.callTool(eq("narrative"), any())).thenReturn(mcpResult);
         
         // WHEN
-        String result = mcpAgentTools.generateNarrative("Создать систему заказов", "Описать процесс", null);
+        String result = mcpAgentTools.generateNarrative("Создать систему заказов");
         
         // THEN
         assertThat(result).contains(TEST_NARRATIVE);
-        verify(mcpServer).callTool(eq("narrative"), any());
+        verify(mcpServer).callTool(eq("narrative"), argThat(args -> 
+                "Создать систему заказов".equals(args.get("goal")) && args.size() == 1
+        ));
     }
     
     // ====================================================================

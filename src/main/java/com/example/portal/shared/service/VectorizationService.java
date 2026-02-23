@@ -3,6 +3,8 @@ package com.example.portal.shared.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,9 +29,24 @@ public class VectorizationService {
     private static final int CHUNK_OVERLAP = 200;
 
     private final LocalVectorStoreService vectorStoreService;
+    private final DocumentTextExtractor documentTextExtractor;
 
-    public VectorizationService(LocalVectorStoreService vectorStoreService) {
+    public VectorizationService(LocalVectorStoreService vectorStoreService,
+                                 DocumentTextExtractor documentTextExtractor) {
         this.vectorStoreService = vectorStoreService;
+        this.documentTextExtractor = documentTextExtractor;
+    }
+
+    /**
+     * Извлечь текст из потока (по расширению: .docx → Word, иначе UTF-8) и загрузить чанками.
+     *
+     * @param filename    имя файла (для выбора экстрактора и metadata.source)
+     * @param inputStream поток содержимого файла
+     * @return список UUID добавленных чанков
+     */
+    public List<UUID> uploadFromStream(String filename, InputStream inputStream) throws IOException {
+        String content = documentTextExtractor.extractText(filename, inputStream);
+        return uploadFromFile(filename, content);
     }
 
     /**

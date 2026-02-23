@@ -88,22 +88,17 @@ public class McpAgentTools {
     }
     
     /**
-     * Генерация нарратива на основе цели и задачи.
+     * Генерация нарратива на основе цели.
      * 
-     * @param goal Цель проекта
-     * @param task Описание задачи
-     * @param description Дополнительное описание
+     * @param goal Цель / описание запроса
      * @return Сгенерированный нарратив
      */
-    public String generateNarrative(String goal, String task, String description) {
+    public String generateNarrative(String goal) {
         try {
-            log.info("Tool call: generateNarrative(goal={} chars, task={} chars)", 
-                    goal != null ? goal.length() : 0, task != null ? task.length() : 0);
+            log.info("Tool call: generateNarrative(goal={} chars)", goal != null ? goal.length() : 0);
             
             Map<String, Object> args = new HashMap<>();
             if (goal != null) args.put("goal", goal);
-            if (task != null) args.put("task", task);
-            if (description != null) args.put("description", description);
             
             Map<String, Object> result = mcpServer.callTool("narrative", args);
             return formatMcpResult(result, "Narrative");

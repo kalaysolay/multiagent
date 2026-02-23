@@ -284,7 +284,7 @@ public class ToolCallingChatService {
         
         callbacks.add(FunctionCallback.builder()
                 .function("generateNarrative", (NarrativeInput input) -> 
-                        mcpAgentTools.generateNarrative(input.goal(), input.task(), input.description()))
+                        mcpAgentTools.generateNarrative(input.goal()))
                 .description("Сгенерировать нарратив предметной области на основе цели и задачи")
                 .inputType(NarrativeInput.class)
                 .build());
@@ -359,9 +359,7 @@ public class ToolCallingChatService {
                         (String) args.getOrDefault("mode", "generate"),
                         (String) args.get("existingModel"));
                 case "generateNarrative" -> mcpAgentTools.generateNarrative(
-                        (String) args.get("goal"),
-                        (String) args.get("task"),
-                        (String) args.get("description"));
+                        (String) args.get("goal"));
                 case "reviewModelOrNarrative" -> mcpAgentTools.reviewModelOrNarrative(
                         (String) args.getOrDefault("target", "model"),
                         (String) args.get("narrative"),
@@ -478,7 +476,7 @@ public class ToolCallingChatService {
     public record SessionIdInput(String sessionId) {}
     public record SessionArtifactInput(String sessionId, String artifactType) {}
     public record DomainModelInput(String narrative, String mode, String existingModel) {}
-    public record NarrativeInput(String goal, String task, String description) {}
+    public record NarrativeInput(String goal) {}
     public record ReviewInput(String target, String narrative, String domainModel) {}
     public record UseCaseInput(String narrative, String domainModel) {}
     public record MvcInput(String narrative, String domainModel, String useCaseModel) {}

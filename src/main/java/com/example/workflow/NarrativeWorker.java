@@ -2,7 +2,7 @@ package com.example.workflow;
 
 import com.example.portal.agents.iconix.service.agentservices.NarrativeWriterService;
 import com.example.portal.agents.iconix.worker.Worker;
-import com.example.portal.shared.service.OpenAiRagService;
+import com.example.portal.shared.service.RagService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +13,7 @@ import java.util.Map;
 public class NarrativeWorker implements Worker {
 
     private final NarrativeWriterService narrativeWriter;
-    private final OpenAiRagService ragService;
+    private final RagService ragService;
 
     @Override
     public String name() {
@@ -24,7 +24,7 @@ public class NarrativeWorker implements Worker {
     public void execute(Context ctx, Map<String, Object> args) {
         String description = args != null && args.containsKey("description")
                 ? String.valueOf(args.get("description"))
-                : ctx.taskOrGoal();
+                : ctx.goal;
 
         var rag = ragService.retrieveContext(description, 4);
         ctx.log(String.format("rag.narrative: fragments=%d, vs=%s",

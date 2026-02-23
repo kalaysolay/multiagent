@@ -17,6 +17,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
@@ -216,13 +218,13 @@ class VectorStoreControllerTest {
         MultipartFile file = mock(MultipartFile.class);
         when(file.isEmpty()).thenReturn(false);
         when(file.getOriginalFilename()).thenReturn("test.txt");
-        when(file.getBytes()).thenReturn("file content".getBytes(StandardCharsets.UTF_8));
-        when(vectorizationService.uploadFromFile(eq("test.txt"), eq("file content")))
+        when(file.getInputStream()).thenReturn(new ByteArrayInputStream("file content".getBytes(StandardCharsets.UTF_8)));
+        when(vectorizationService.uploadFromStream(eq("test.txt"), any(InputStream.class)))
                 .thenReturn(List.of(testDocId));
 
         ResponseEntity<?> response = vectorStoreController.uploadDocuments(new MultipartFile[]{file});
 
         assertThat(response.getStatusCode().value()).isEqualTo(200);
-        verify(vectorizationService).uploadFromFile("test.txt", "file content");
+        verify(vectorizationService).uploadFromStream(eq("test.txt"), any(InputStream.class));
     }
 }

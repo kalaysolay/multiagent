@@ -1,0 +1,42 @@
+package com.example.portal.shared.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
+/**
+ * Реализация LLM сервиса для корпоративного API (OpenAI-совместимый).
+ * Активируется при app.llm-provider=CORPORATE.
+ */
+@Service
+@ConditionalOnProperty(name = "app.llm-provider", havingValue = "CORPORATE")
+@Slf4j
+public class CorporateLlmService implements LlmService {
+
+    private final ChatClient chatClient;
+
+    @Autowired
+    public CorporateLlmService(ChatClient chatClient) {
+        this.chatClient = chatClient;
+        log.info("Initialized Corporate LLM Service");
+    }
+
+    @Override
+    public String generate(String prompt) {
+        return generate(prompt, 1.0);
+    }
+
+    @Override
+    public String generate(String prompt, Double temperature) {
+        return chatClient.prompt()
+                .user(prompt)
+                .options(OpenAiChatOptions.builder()
+                        .temperature(temperature != null ? temperature : 1.0)
+                        .build())
+                .call()
+                .content();
+    }
+}

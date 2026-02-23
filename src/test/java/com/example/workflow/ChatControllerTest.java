@@ -147,7 +147,7 @@ class ChatControllerTest {
         ChatController.ChatResponse response = chatController.chat(request);
         
         // THEN
-        assertThat(response.response()).contains("Ошибка");
+        assertThat(response.response()).contains("ошибка");
         assertThat(response.response()).contains("Test error");
     }
     

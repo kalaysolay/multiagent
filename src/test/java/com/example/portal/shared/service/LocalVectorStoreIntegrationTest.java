@@ -1,7 +1,6 @@
 package com.example.portal.shared.service;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -27,19 +26,19 @@ import static org.mockito.Mockito.when;
 /**
  * Интеграционный тест: векторизация, сохранение и RAG-поиск через pgvector.
  * Использует Testcontainers (PostgreSQL + pgvector) и mock EmbeddingModel.
- * Требует Docker. Отключён из-за конфликта ollamaEmbeddingModel/openAiEmbeddingModel в тестах.
+ * Требует Docker.
  */
-@Disabled("Требует настройки: исключить OpenAI embedding или использовать @Qualifier в зависимостях")
 @SpringBootTest
 @ActiveProfiles("test")
 @Testcontainers
 class LocalVectorStoreIntegrationTest {
 
-    private static final float[] MOCK_EMBEDDING_768 = new float[768];
+    // V13: document_embeddings использует vector(1024)
+    private static final float[] MOCK_EMBEDDING_1024 = new float[1024];
 
     static {
-        for (int i = 0; i < 768; i++) {
-            MOCK_EMBEDDING_768[i] = 0.001f * (i % 100);
+        for (int i = 0; i < 1024; i++) {
+            MOCK_EMBEDDING_1024[i] = 0.001f * (i % 100);
         }
     }
 
@@ -67,12 +66,12 @@ class LocalVectorStoreIntegrationTest {
     @Autowired
     private LocalVectorStoreService vectorStoreService;
 
-    @Autowired(required = false)
+    @Autowired
     private RagService ragService;
 
     @BeforeEach
     void setUp() {
-        when(embeddingModel.embed(anyString())).thenReturn(MOCK_EMBEDDING_768);
+        when(embeddingModel.embed(anyString())).thenReturn(MOCK_EMBEDDING_1024);
     }
 
     @Test
@@ -98,10 +97,6 @@ class LocalVectorStoreIntegrationTest {
     void ragRetrieveContext_jwtQuery_returnsContext() throws Exception {
         String content = new ClassPathResource("compliance-automation.txt").getContentAsString(StandardCharsets.UTF_8);
         vectorizationService.uploadFromFile("compliance-automation.txt", content);
-
-        if (ragService == null) {
-            return; // RAG может быть отключён в тестовом контексте
-        }
 
         RagService.ContextResult ctx = ragService.retrieveContext("JWT время жизни токена", 3);
         assertThat(ctx.vectorStoreAvailable()).isTrue();
