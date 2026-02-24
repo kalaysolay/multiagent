@@ -91,8 +91,11 @@ public class WorkflowSessionService {
         Worker.Context ctx = restoreContext(session);
         com.example.portal.agents.iconix.model.OrchestratorPlan plan = restorePlan(session);
         
-        // Строим artifacts из state
+        // Строим artifacts из state; goal — исходный запрос пользователя, narrative — сгенерированный нарратив
         Map<String, Object> artifacts = new LinkedHashMap<>();
+        if (session.getGoal() != null && !session.getGoal().isBlank()) {
+            artifacts.put("goal", session.getGoal());
+        }
         artifacts.put("narrative", ctx.narrativeEffective());
         if (ctx.state.containsKey("plantuml")) {
             artifacts.put("plantuml", ctx.state.get("plantuml"));

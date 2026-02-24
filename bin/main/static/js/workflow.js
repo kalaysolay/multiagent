@@ -34,12 +34,11 @@ async function loadSessionFromUrl() {
             
             // Заполняем поля данными из сессии
             if (data.artifacts) {
-                // Заполняем поле ввода нарратива
-                if (data.artifacts.narrative) {
-                    document.getElementById('narrativeInput').value = cleanText(data.artifacts.narrative);
+                // Поле ввода «Цель / Запрос» — только исходная цель пользователя, не подменяем нарративом
+                if (data.artifacts.goal) {
+                    document.getElementById('narrativeInput').value = cleanText(data.artifacts.goal);
                 }
-                
-                // Заполняем поля результатов
+                // Результат генерации нарратива — в поле вывода
                 if (data.artifacts.narrative) {
                     document.getElementById('narrativeOutput').value = cleanText(data.artifacts.narrative);
                 }
@@ -345,8 +344,11 @@ function handleResponse(data) {
         }
     }
     
-    // Заполняем поля результатами
+    // Заполняем поля результатами; цель пользователя не перезаписываем нарративом
     if (data.artifacts) {
+        if (data.artifacts.goal) {
+            document.getElementById('narrativeInput').value = cleanText(data.artifacts.goal);
+        }
         if (data.artifacts.narrative) {
             document.getElementById('narrativeOutput').value = cleanText(data.artifacts.narrative);
         }

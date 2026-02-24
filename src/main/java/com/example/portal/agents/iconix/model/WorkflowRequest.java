@@ -1,10 +1,8 @@
 package com.example.portal.agents.iconix.model;
 
+/** Тело запроса на запуск workflow. Ввод пользователя — только цель (goal). domainModel — результат агента, в run не передаётся. */
 public record WorkflowRequest(
-        String requestId,      // Для возобновления существующей сессии
-        String narrative,      // Нарратив (может быть обновлен при возобновлении)
-        String goal,
-        String domainModel    // Domain model (PlantUML) для обновления при возобновлении
-)
-{}
+        String requestId,
+        String goal
+) {}
 

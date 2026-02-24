@@ -3,9 +3,9 @@ package com.example.workflow;
 import com.example.portal.agents.iconix.exception.PauseForUserReviewException;
 import com.example.portal.agents.iconix.model.OrchestratorPlan;
 import com.example.portal.agents.iconix.model.PlanStep;
+import com.example.portal.agents.iconix.model.ResumeRequest;
 import com.example.portal.agents.iconix.model.WorkflowRequest;
 import com.example.portal.agents.iconix.model.WorkflowResponse;
-import com.example.portal.agents.iconix.model.WorkflowStatus;
 import com.example.portal.agents.iconix.worker.Worker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,48 +26,33 @@ public class OrchestratorService {
     public WorkflowResponse run(WorkflowRequest req) throws Exception {
         String requestId = req.requestId() != null ? req.requestId() : UUID.randomUUID().toString();
         
-        // Проверяем, нужно ли возобновить существующую сессию
+        // Запуск только для новой сессии; если сессия в паузе — возобновлять через POST /resume
         Optional<com.example.portal.agents.iconix.entity.WorkflowSession> existingSession = sessionService.loadSession(requestId);
         if (existingSession.isPresent() && existingSession.get().getStatus() == com.example.portal.agents.iconix.model.WorkflowStatus.PAUSED_FOR_REVIEW) {
-            return resumeWorkflow(requestId, req);
+            throw new IllegalStateException(
+                    "Сессия " + requestId + " приостановлена для ревью. Используйте POST /workflow/resume с requestId, narrative и domainModel.");
         }
         
-        // Создаем новую сессию
-        var ctx = new Worker.Context(requestId,
-                "",
-                Optional.ofNullable(req.goal()).orElse(""));
-        // int maxIter = Optional.ofNullable(req.constraints())
-        //         .map(WorkflowRequest.Constraints::maxIterations).orElse(6);
-
-        log.info("=== Запуск оркестратора ИИ-агента ===");
+        // Создаем новую сессию: ввод пользователя — только goal
+        String goal = Optional.ofNullable(req.goal()).orElse("").trim();
+        log.info("=== Запуск оркестратора ===");
         log.info("Request ID: {}", requestId);
-        log.info("Цель: {}", ctx.goal);
-        log.info("Контекст (narrative): {}", ctx.narrative);
+        log.info("Incoming goal length: {} chars, preview: {}", goal.length(), goal.length() > 0 ? goal.substring(0, Math.min(100, goal.length())) + (goal.length() > 100 ? "..." : "") : "(empty)");
+
+        var ctx = new Worker.Context(requestId, "", goal);
         // log.info("Максимальное количество итераций: {}", maxIter);
 
-        // 1) Сформировать план
-        OrchestratorPlan plan;
-        if (shouldForceNarrativeReview(ctx.narrative, ctx.goal)) {
-            plan = new OrchestratorPlan(
-                    "Пользователь запросил ревью только нарратива, пропускаем построение модели.",
-                    List.of(new PlanStep("review", Map.of("target", "narrative"))));
-            ctx.log("plan.override: narrative-only");
-            log.info("Цель интерпретирована как ревью только нарратива. План сгенерирован детерминированно.");
-        } else {
-            plan = buildDefaultPlan();
-            ctx.log("plan.default: narrative→model→review→refine→userReview→usecase→mvc");
-            log.info("Используем стандартный план: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC → Scenario.");
-        }
-
-        ctx.log("plan: " + plan.plan().size() + " steps");
-        log.info("План получен. Количество шагов: {}", plan.plan().size());
+        // 1) Сформировать план: narrative → userReview → модели (качественный нарратив до построения моделей)
+        OrchestratorPlan plan = buildDefaultPlan();
+        ctx.log("plan: Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario");
+        log.info("План: Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario. Шагов: {}", plan.plan().size());
 
         // 2) Исполнить шаги
         return executeSteps(ctx, plan, requestId);
     }
     
     @Transactional
-    public WorkflowResponse resumeWorkflow(String requestId, WorkflowRequest req) throws Exception {
+    public WorkflowResponse resumeWorkflow(String requestId, ResumeRequest req) throws Exception {
         log.info("=== Возобновление workflow ===");
         log.info("Request ID: {}", requestId);
         
@@ -81,13 +66,17 @@ public class OrchestratorService {
             throw new IllegalStateException("Session is not paused for review: " + requestId);
         }
         
-        // Обновляем контекст с данными пользователя
+        // Обновляем контекст с данными пользователя (отредактированный нарратив и/или доменная модель)
         if (req.narrative() != null && !req.narrative().isBlank()) {
             sessionService.updateContextFromUserInput(requestId, req.narrative(), null);
         }
         if (req.domainModel() != null && !req.domainModel().isBlank()) {
             sessionService.updateContextFromUserInput(requestId, null, req.domainModel());
         }
+        
+        // Перезагружаем сессию из БД, чтобы контекст содержал сохранённые narrative/domainModel
+        session = sessionService.loadSession(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requestId));
         
         // Восстанавливаем контекст и план
         Worker.Context ctx = sessionService.restoreContext(session);
@@ -164,6 +153,9 @@ public class OrchestratorService {
     
     private Map<String, Object> buildArtifacts(Worker.Context ctx) {
         Map<String, Object> artifacts = new LinkedHashMap<>();
+        if (ctx.goal != null && !ctx.goal.isBlank()) {
+            artifacts.put("goal", ctx.goal);
+        }
         artifacts.put("narrative", ctx.narrativeEffective());
         if (ctx.state.containsKey("plantuml")) artifacts.put("plantuml", ctx.state.get("plantuml"));
         if (ctx.state.containsKey("issues")) artifacts.put("issues", ctx.state.get("issues"));
@@ -180,40 +172,24 @@ public class OrchestratorService {
         return artifacts;
     }
 
+    /**
+     * План по умолчанию: сначала нарратив и ревью пользователем, затем модели.
+     * UserReview сразу после narrative нужен, чтобы на вход model попадал уже согласованный нарратив.
+     */
     private OrchestratorPlan buildDefaultPlan() {
         List<PlanStep> steps = List.of(
                 new PlanStep("narrative", Map.of()),
+                new PlanStep("userReview", Map.of()), // Пауза: пользователь проверяет/правит нарратив (доменной модели ещё нет)
                 new PlanStep("model", Map.of("mode", "generate")),
                 new PlanStep("review", Map.of("target", "model")),
                 new PlanStep("model", Map.of("mode", "refine")),
-                new PlanStep("userReview", Map.of()), // Пауза для пользовательского ревью
                 new PlanStep("usecase", Map.of()),
                 new PlanStep("mvc", Map.of()),
                 new PlanStep("scenario", Map.of())
         );
         return new OrchestratorPlan(
-                "Стандартный мультиагентский цикл: Narrative → Model → Review → Model(refine) → UserReview → UseCase → MVC → Scenario.",
+                "Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario. Ревью нарратива до построения моделей.",
                 steps
         );
-    }
-
-    private static boolean shouldForceNarrativeReview(String narrative, String goal) {
-        String combined = (goal == null ? "" : goal) + " " + (narrative == null ? "" : narrative);
-        String text = combined.toLowerCase();
-
-        boolean mentionsNarrative = text.contains("нарратив") || text.contains("narrative");
-        if (!mentionsNarrative) return false;
-
-        boolean mentionsReview = text.contains("ревью") || text.contains("review")
-                || text.contains("провер") || text.contains("оцен");
-        if (!mentionsReview) return false;
-
-        boolean mentionsModel = text.contains("модель") || text.contains("model")
-                || text.contains("plantuml") || text.contains("iconix");
-
-        boolean explicitNarrativeOnly = text.contains("только нарратив") || text.contains("без модели")
-                || text.contains("narrative only");
-
-        return explicitNarrativeOnly || (!mentionsModel);
     }
 }

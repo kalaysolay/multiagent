@@ -1,5 +1,6 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.model.ResumeRequest;
 import com.example.portal.agents.iconix.model.WorkflowRequest;
 import com.example.portal.agents.iconix.model.WorkflowResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,7 @@ public class WorkflowController {
     }
     
     @PostMapping("/resume")
-    public WorkflowResponse resume(@RequestBody WorkflowRequest req) throws Exception {
+    public WorkflowResponse resume(@RequestBody ResumeRequest req) throws Exception {
         if (req.requestId() == null || req.requestId().isBlank()) {
             throw new IllegalArgumentException("requestId is required for resume");
         }
