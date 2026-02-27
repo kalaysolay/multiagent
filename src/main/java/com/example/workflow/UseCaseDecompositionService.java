@@ -1,6 +1,8 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.service.UseCaseMvcService;
 import com.example.portal.agents.iconix.service.UseCaseScenarioService;
+import com.example.portal.agents.iconix.service.agentservices.MVCModellerService;
 import com.example.portal.agents.iconix.service.agentservices.ScenarioWriterService;
 import com.example.portal.shared.service.RagService;
 import lombok.RequiredArgsConstructor;
@@ -10,16 +12,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Сервис для декомпозиции отдельных Use Case.
- * Генерирует сценарий для конкретного Use Case и сохраняет его в БД.
+ * Для каждого UC генерирует MVC-диаграмму (mvc_modeller) и сценарий, сохраняет оба в БД.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UseCaseDecompositionService {
-    
+
     private final ScenarioWriterService scenarioWriter;
+    private final MVCModellerService mvcModeller;
     private final RagService ragService;
     private final UseCaseScenarioService scenarioService;
+    private final UseCaseMvcService mvcService;
     private final WorkflowSessionService workflowSessionService;
     private final PlantUmlFilter plantUmlFilter;
     
@@ -86,12 +90,21 @@ public class UseCaseDecompositionService {
             
             // Сокращаем narrative до разумного размера (2000 символов)
             String shortenedNarrative = plantUmlFilter.shortenNarrative(narrative, useCaseName, 2000);
-            
+
             // Получаем RAG контекст (уменьшаем количество фрагментов для экономии токенов)
             String query = String.format("%s %s", useCaseName, useCaseAlias);
-            var ragContext = ragService.retrieveContext(query, 2); // Уменьшили с 4 до 2
+            var ragContext = ragService.retrieveContext(query, 2);
             log.info("RAG context retrieved: {} fragments", ragContext.fragmentsCount());
-            
+
+            // Генерируем MVC для этого Use Case (промпт mvc_modeller) и сохраняем
+            String mvcPlantUml = mvcModeller.generateMVCPlantUml(
+                    shortenedNarrative,
+                    domainModel,
+                    filteredUseCaseModel,
+                    ragContext.text());
+            mvcService.save(requestId, useCaseAlias, useCaseName, mvcPlantUml);
+            log.info("MVC generated and saved for Use Case {}: {} chars", useCaseAlias, mvcPlantUml.length());
+
             // Генерируем сценарий для конкретного Use Case
             // Передаем дополнительный контекст о выбранном Use Case
             String enhancedNarrative = shortenedNarrative + "\n\nВыбранный Use Case для декомпозиции: " + useCaseName;

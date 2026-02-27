@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -81,6 +82,22 @@ class OrchestratorServiceTest {
         when(sessionService.loadSession(any())).thenReturn(Optional.empty());
         when(registry.get("narrative")).thenReturn(narrativeWorker);
         when(registry.get("userReview")).thenReturn(userReviewWorker);
+        // Stub buildCoreArtifacts so orchestrator gets core fields (goal, narrative, etc.) to add _status/_reviewData
+        when(sessionService.buildCoreArtifacts(any(), any(), any())).thenAnswer(inv -> {
+            String goal = inv.getArgument(0);
+            String narrative = inv.getArgument(1);
+            Map<String, Object> state = inv.getArgument(2);
+            Map<String, Object> core = new LinkedHashMap<>();
+            if (goal != null && !goal.isBlank()) core.put("goal", goal);
+            core.put("narrative", narrative != null ? narrative : "");
+            if (state != null && state.containsKey("plantuml")) core.put("plantuml", state.get("plantuml"));
+            if (state != null && state.containsKey("issues")) core.put("issues", state.get("issues"));
+            if (state != null && state.containsKey("narrativeIssues")) core.put("narrativeIssues", state.get("narrativeIssues"));
+            if (state != null && state.containsKey("useCaseModel")) core.put("useCaseModel", state.get("useCaseModel"));
+            if (state != null && state.containsKey("mvcDiagram")) core.put("mvcDiagram", state.get("mvcDiagram"));
+            if (state != null && state.containsKey("scenario")) core.put("scenarios", List.of(state.get("scenario")));
+            return core;
+        });
     }
 
     @Test

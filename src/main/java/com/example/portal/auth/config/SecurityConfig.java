@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -87,7 +88,10 @@ public class SecurityConfig {
                 .requestMatchers("/login.html", "/css/**", "/js/**", "/images/**", "/api/auth/login", "/api/auth/me").permitAll()
                 .requestMatchers("/index.html", "/", "/render.html", "/chat.html", "/git-analyser.html", 
                                 "/iconix-agent-list.html", "/iconix-agent-detail.html",
+                                "/iconix-documentation.html",
                                 "/prompts.html", "/vector-store.html").permitAll()
+                // Просмотр документации (список файлов и содержимое) без авторизации, чтобы страница не редиректила на логин
+                .requestMatchers(HttpMethod.GET, "/api/usecase/documentation/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exceptions -> exceptions

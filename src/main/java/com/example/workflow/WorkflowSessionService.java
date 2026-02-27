@@ -1,8 +1,6 @@
 package com.example.workflow;
 
 import com.example.portal.agents.iconix.entity.WorkflowSession;
-import com.example.portal.agents.iconix.model.OrchestratorPlan;
-import com.example.portal.agents.iconix.model.WorkflowStatus;
 import com.example.portal.agents.iconix.repository.WorkflowSessionRepository;
 import com.example.portal.agents.iconix.worker.Worker;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -80,6 +78,43 @@ public class WorkflowSessionService {
     }
     
     /**
+     * Собирает ядро артефактов (goal, narrative, plantuml, issues, useCaseModel, mvcDiagram, scenarios)
+     * без служебных полей _status и _reviewData. Единый источник правды для структуры артефактов.
+     *
+     * @param goal              Исходная цель пользователя
+     * @param narrativeEffective Эффективный нарратив (из контекста или override)
+     * @param state             State контекста (plantuml, issues, narrativeIssues, useCaseModel, mvcDiagram, scenario)
+     * @return Карта артефактов с предсказуемым порядком полей (LinkedHashMap)
+     */
+    public Map<String, Object> buildCoreArtifacts(String goal, String narrativeEffective, Map<String, Object> state) {
+        Map<String, Object> artifacts = new LinkedHashMap<>();
+        if (goal != null && !goal.isBlank()) {
+            artifacts.put("goal", goal);
+        }
+        artifacts.put("narrative", narrativeEffective != null ? narrativeEffective : "");
+        if (state != null && state.containsKey("plantuml")) {
+            artifacts.put("plantuml", state.get("plantuml"));
+        }
+        if (state != null && state.containsKey("issues")) {
+            artifacts.put("issues", state.get("issues"));
+        }
+        if (state != null && state.containsKey("narrativeIssues")) {
+            artifacts.put("narrativeIssues", state.get("narrativeIssues"));
+        }
+        if (state != null && state.containsKey("useCaseModel")) {
+            artifacts.put("useCaseModel", state.get("useCaseModel"));
+        }
+        if (state != null && state.containsKey("mvcDiagram")) {
+            artifacts.put("mvcDiagram", state.get("mvcDiagram"));
+        }
+        if (state != null && state.containsKey("scenario")) {
+            List<String> scenarios = List.of((String) state.get("scenario"));
+            artifacts.put("scenarios", scenarios);
+        }
+        return artifacts;
+    }
+
+    /**
      * Получить данные сессии в формате WorkflowResponse для отображения на фронтенде.
      */
     @Transactional(readOnly = true)
@@ -87,41 +122,22 @@ public class WorkflowSessionService {
         WorkflowSession session = loadSession(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requestId));
         
-        // Восстанавливаем контекст и план
         Worker.Context ctx = restoreContext(session);
         com.example.portal.agents.iconix.model.OrchestratorPlan plan = restorePlan(session);
         
-        // Строим artifacts из state; goal — исходный запрос пользователя, narrative — сгенерированный нарратив
-        Map<String, Object> artifacts = new LinkedHashMap<>();
-        if (session.getGoal() != null && !session.getGoal().isBlank()) {
-            artifacts.put("goal", session.getGoal());
-        }
-        artifacts.put("narrative", ctx.narrativeEffective());
-        if (ctx.state.containsKey("plantuml")) {
-            artifacts.put("plantuml", ctx.state.get("plantuml"));
-        }
-        if (ctx.state.containsKey("issues")) {
-            artifacts.put("issues", ctx.state.get("issues"));
-        }
-        if (ctx.state.containsKey("narrativeIssues")) {
-            artifacts.put("narrativeIssues", ctx.state.get("narrativeIssues"));
-        }
-        if (ctx.state.containsKey("useCaseModel")) {
-            artifacts.put("useCaseModel", ctx.state.get("useCaseModel"));
-        }
-        if (ctx.state.containsKey("mvcDiagram")) {
-            artifacts.put("mvcDiagram", ctx.state.get("mvcDiagram"));
-        }
-        
-        // Добавляем сценарии из state (если есть)
-        if (ctx.state.containsKey("scenario")) {
-            List<String> scenarios = List.of((String) ctx.state.get("scenario"));
-            artifacts.put("scenarios", scenarios);
-        }
-        
-        // Добавляем статус в artifacts для фронтенда
+        Map<String, Object> artifacts = buildCoreArtifacts(
+                session.getGoal(),
+                ctx.narrativeEffective(),
+                ctx.state
+        );
         artifacts.put("_status", session.getStatus().toString());
-        
+        // Флаг и имя папки для кнопки «Документация» и предзаполнения формы обновления
+        String docFolder = session.getDocumentationFolderName();
+        artifacts.put("hasGeneratedDocs", docFolder != null && !docFolder.isBlank());
+        if (docFolder != null && !docFolder.isBlank()) {
+            artifacts.put("documentationFolderName", docFolder);
+        }
+
         // Если есть данные для ревью, добавляем их
         if (session.getUserReviewData() != null && !session.getUserReviewData().isBlank()) {
             try {
@@ -182,6 +198,18 @@ public class WorkflowSessionService {
         }
     }
     
+    /**
+     * Сохраняет имя папки сгенерированной документации для сессии.
+     * Вызывается после успешной генерации файлов документации.
+     */
+    @Transactional
+    public void setDocumentationFolderForSession(String requestId, String folderName) {
+        WorkflowSession session = repository.findByRequestId(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requestId));
+        session.setDocumentationFolderName(folderName);
+        repository.save(session);
+    }
+
     @Transactional
     public void updateContextFromUserInput(String requestId, String narrative, String domainModel) {
         Optional<WorkflowSession> sessionOpt = repository.findByRequestId(requestId);

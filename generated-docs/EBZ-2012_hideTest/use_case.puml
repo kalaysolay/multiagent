@@ -1,0 +1,90 @@
+```plantuml
+@startuml uc_articleVisibility
+title
+    Тень статьи скрыта,
+    Портал ищет свет,
+    Система молчит.
+end title
+
+left to right direction
+
+skinparam WrapWidth 200
+skinparam usecase {{
+    ' Base - Базовый вариант использования.
+    BackgroundColor<< base >> PeachPuff
+    BorderColor<< base >> SaddleBrown
+    BorderThickness<< base >> 3
+    ' Abstract - абстрактный прецедент
+    BackgroundColor<< abstract >> WhiteSmoke
+    BorderColor<< abstract >> Green
+    BorderThickness<< abstract >> 3
+}}
+
+' *** Акторы ***
+actor "Пользователь" as user << user >>
+actor "Редактор" as editor << user >>
+editor --|> user
+
+' *** Скоуп ***
+rectangle "Управление видимостью статей в Портале ЕБЗ" as box {{
+    ' Базовые прецеденты
+    usecase "Скрыть статью на портале" as hideArticle << base >>
+    usecase "Отобразить статью на портале" as showArticle << base >>
+    usecase "Поиск статьи в рубрикаторе" as searchArticle << base >>
+    usecase "Открыть статью по прямой ссылке" as openArticleByLink << base >>
+
+    ' Абстрактные прецеденты (шаги процесса)
+    usecase "Открыть центр администрирования" as openAdminCenter << abstract >>
+    usecase "Перейти к списку статей" as goToArticleList << abstract >>
+    usecase "Выбрать статью" as selectArticle << abstract >>
+    usecase "Отметить флаг скрытия" as markHideFlag << abstract >>
+    usecase "Снять флаг скрытия" as unmarkHideFlag << abstract >>
+    usecase "Сохранить изменения статуса статьи" as saveArticleChanges << abstract >>
+    usecase "Проверить флаг скрытия" as checkHideFlag << abstract >>
+    usecase "Обновить индекс видимости" as updateVisibilityIndex << abstract >>
+    usecase "Исключить статью из рубрикатора" as excludeFromCatalog << abstract >>
+    usecase "Пометить ссылку как недоступную" as markLinkUnavailable << abstract >>
+    usecase "Включить статью в видимость" as includeInVisibility << abstract >>
+    usecase "Ввести запрос поиска" as enterSearchQuery << abstract >>
+    usecase "Просматривать рубрикатор" as browseCatalog << abstract >>
+    usecase "Вернуть страницу ошибки" as returnErrorPage << abstract >>
+
+    ' *** Связи акторов с базовыми прецедентами ***
+    editor -- hideArticle
+    editor -- showArticle
+    user -- searchArticle
+    user -- openArticleByLink
+
+    ' *** Связи базовых прецедентов с абстрактными (include) ***
+    ' Скрыть статью
+    hideArticle ..> openAdminCenter : include
+        openAdminCenter ..> goToArticleList : include
+            goToArticleList ..> selectArticle : include
+                selectArticle ..> markHideFlag : include
+                    markHideFlag ..> saveArticleChanges : include
+                        saveArticleChanges ..> checkHideFlag : include
+                            checkHideFlag ..> updateVisibilityIndex : include
+                                updateVisibilityIndex ..> excludeFromCatalog : include
+                                    excludeFromCatalog ..> markLinkUnavailable : include
+
+    ' Отобразить (снять скрытие) статью
+    showArticle ..> openAdminCenter : include
+        openAdminCenter ..> goToArticleList : include
+            goToArticleList ..> selectArticle : include
+                selectArticle ..> unmarkHideFlag : include
+                    unmarkHideFlag ..> saveArticleChanges : include
+                        saveArticleChanges ..> checkHideFlag : include
+                            checkHideFlag ..> updateVisibilityIndex : include
+                                updateVisibilityIndex ..> includeInVisibility : include
+
+    ' Поиск статьи
+    searchArticle ..> enterSearchQuery : include
+    searchArticle ..> browseCatalog : include
+
+    ' Открыть статью по прямой ссылке
+    openArticleByLink ..> checkHideFlag : include
+    returnErrorPage <.. openArticleByLink : extend
+}}
+
+@enduml
+```

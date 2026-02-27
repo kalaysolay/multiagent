@@ -84,6 +84,9 @@ app:
   vector-store:
     table-name: document_embeddings
     embedding-dimensions: 768   # OLLAMA (V11). Для OPENAI/CORPORATE — V12 (1536)
+  # Папка на сервере, в которой создаются подпапки с документацией (имя подпапки задаёт пользователь)
+  documentation:
+    output-base-path: ${DOCS_OUTPUT_PATH:./generated-docs}
 
 # JWT конфигурация
 jwt:

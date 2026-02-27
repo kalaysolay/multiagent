@@ -1,0 +1,104 @@
+```plantuml
+@startuml domain_model
+Title Управление видимостью статьи в Портале ЕБЗ
+skinparam WrapWidth 150
+
+' ==========================
+' Классы и сущности
+' ==========================
+class "Пользователь" as User {{
+    + {{field}} id: UUID
+    + {{field}} role: String
+    + {{method}} выполнитьПоиск()
+    + {{method}} просмотретьРубрикатор()
+    + {{method}} открытьСтатью()
+}}
+
+class "Редактор" as Editor {{
+    + {{method}} открытьЦентрАдминистрирования()
+    + {{method}} выбратьСтатью()
+    + {{method}} отметитьФлагСкрытия()
+    + {{method}} снятьФлагСкрытия()
+    + {{method}} сохранитьИзменения()
+}}
+Editor --|> User : наследование
+
+entity "Статья" as Article {{
+    + {{field}} id: UUID
+    + {{field}} naimenovanie: String
+    + {{field}} status: String
+    + {{field}} hideFlag: Boolean
+    + {{field}} tags: List<String>
+    + {{field}} channel: String
+    + {{field}} lastModified: DateTime
+    + {{method}} установитьФлагСкрытия()
+    + {{method}} снятьФлагСкрытия()
+    + {{method}} сохранить()
+}}
+
+entity "ИндексВидимости" as VisibilityIndex {{
+    + {{field}} articleId: UUID
+    + {{field}} visible: Boolean
+    + {{method}} обновитьИндекс()
+}}
+Article "1" *-- "1" VisibilityIndex : композиция
+
+class "ПодсистемаПубликаций" as PublicationSubsystem {{
+    + {{method}} обновитьИндексВидимости()
+    + {{method}} инвалидацияКеша()
+}}
+PublicationSubsystem ..> VisibilityIndex : использование
+PublicationSubsystem ..> CacheManager : использование
+PublicationSubsystem ..|> PublicationAPI : реализация
+
+interface "APIПубликаций" as PublicationAPI {{
+    + {{method}} getVisibilityIndex()
+}}
+
+class "СерверПортала" as PortalServer {{
+    + {{method}} проверитьФлагСкрытия()
+    + {{method}} вернутьСтраницуОшибка()
+}}
+PortalServer ..> Article : использование
+PortalServer ..> ErrorPage : использование
+PortalServer ..> AuditLog : запись
+
+class "КешМенеджер" as CacheManager {{
+    + {{method}} инвалидацияКеша()
+}}
+
+entity "ЖурналАудита" as AuditLog {{
+    + {{field}} entryId: UUID
+    + {{field}} userId: UUID
+    + {{field}} articleId: UUID
+    + {{field}} action: String
+    + {{field}} timestamp: DateTime
+    + {{field}} result: String
+    + {{method}} записатьЗапись()
+}}
+
+class "СтраницаОшибка" as ErrorPage << (U, #d310e4) GUI >> {{
+    + {{field}} кодОшибка: Int
+    + {{field}} рекомендация: String
+    + {{field}} ссылкаНаСправку: String
+    + {{method}} отобразитьСообщение()
+}}
+
+class "Админцентр" as AdminCenter << (U, #d310e4) GUI >> {{
+    + {{method}} отобразить()
+}}
+
+' ==========================
+' Взаимодействия
+' ==========================
+User ..> PortalServer : использование
+Editor ..> AdminCenter : использование
+Editor ..> Article : ассоциация
+Editor ..> AuditLog : запись
+
+' ==========================
+' Оценка сложности
+' ==========================
+' C = 2^N, N = 0 (все элементы связаны) => C = 1
+@enduml
+```

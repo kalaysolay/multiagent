@@ -31,7 +31,8 @@ async function loadSessionFromUrl() {
             }
             
             const data = await response.json();
-            
+            window.__lastSessionData = data;
+
             // Заполняем поля данными из сессии
             if (data.artifacts) {
                 // Поле ввода «Цель / Запрос» — только исходная цель пользователя, не подменяем нарративом
@@ -103,13 +104,15 @@ async function loadSessionFromUrl() {
             // Загружаем декомпозированные сценарии, если есть
             // Используем requestId, который уже объявлен выше в функции
             if (requestId) {
-                loadDecomposedScenarios(requestId);
+                loadDecomposedArtifacts(requestId);
             }
             
             // Убеждаемся, что обработчики кликов установлены (если они еще не установлены)
-            // Это нужно, если diagram-modal.js загрузился раньше, чем данные
             ensureDiagramButtonHandlers();
-            
+
+            // Показываем/скрываем кнопки документации в зависимости от статуса и наличия доков
+            updateDocumentationButtons(data);
+
         } catch (error) {
             console.error('Error loading session:', error);
             showStatus(`Ошибка загрузки сессии: ${error.message}`, 'error');
@@ -166,7 +169,19 @@ function initEventListeners() {
                 updateDecomposeButtonState();
             }
         });
-    
+
+    // Документация: кнопки и модальные окна
+    const createDocBtn = document.getElementById('createDocumentationBtn');
+    const viewDocBtn = document.getElementById('viewDocumentationBtn');
+    if (createDocBtn) createDocBtn.addEventListener('click', openDocumentationGenerateModal);
+    if (viewDocBtn) viewDocBtn.addEventListener('click', openDocumentationPage);
+    const closeGenModal = document.getElementById('closeDocumentationGenerateModal');
+    if (closeGenModal) closeGenModal.addEventListener('click', closeDocumentationGenerateModal);
+    const generateDocBtn = document.getElementById('generateDocumentationBtn');
+    if (generateDocBtn) generateDocBtn.addEventListener('click', handleGenerateDocumentation);
+    const genModal = document.getElementById('documentationGenerateModal');
+    if (genModal) genModal.addEventListener('click', function(e) { if (e.target === genModal) closeDocumentationGenerateModal(); });
+
     // Enter для отправки (Ctrl+Enter)
     document.getElementById('narrativeInput').addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'Enter') {
@@ -314,6 +329,7 @@ async function sendResume() {
 }
 
 function handleResponse(data) {
+    window.__lastSessionData = data;
     // Сохраняем requestId
     currentRequestId = data.requestId;
     document.getElementById('sessionId').textContent = currentRequestId;
@@ -380,10 +396,13 @@ function handleResponse(data) {
     
     // Обновляем состояние кнопок просмотра диаграмм
     updateViewDiagramButtons();
-    
+
     // Убеждаемся, что обработчики кликов установлены
     ensureDiagramButtonHandlers();
-    
+
+    // Кнопки документации (Создать / Документация)
+    updateDocumentationButtons(data);
+
     // Переключаемся на первую вкладку с данными
     if (data.artifacts?.narrative) {
         switchTab('narrative');
@@ -782,8 +801,8 @@ async function handleDecomposition() {
         
         const data = await response.json();
         
-        // Обновляем отображение сценариев
-        await loadDecomposedScenarios(requestId);
+        // Обновляем отображение сценариев и MVC
+        await loadDecomposedArtifacts(requestId);
         
         // Показываем результаты
         const successCount = data.results.filter(r => r.success).length;
@@ -814,22 +833,23 @@ async function handleDecomposition() {
 }
 
 /**
- * Загружает декомпозированные сценарии для текущей workflow сессии
+ * Загружает декомпозированные сценарии и MVC для текущей workflow сессии
  */
-async function loadDecomposedScenarios(requestId) {
+async function loadDecomposedArtifacts(requestId) {
     try {
         const response = await fetch(`/api/usecase/decomposition/${requestId}`);
         
         if (!response.ok) {
-            console.warn('Failed to load scenarios:', response.status);
+            console.warn('Failed to load decomposition artifacts:', response.status);
             return;
         }
         
         const data = await response.json();
-        displayScenarios(data.scenarios);
+        displayScenarios(data.scenarios || []);
+        displayMvcDiagrams(data.mvcDiagrams || []);
         
     } catch (error) {
-        console.error('Error loading scenarios:', error);
+        console.error('Error loading decomposition artifacts:', error);
     }
 }
 
@@ -869,6 +889,90 @@ function displayScenarios(scenarios) {
             </div>
         `;
     }).join('');
+}
+
+/**
+ * Отображает декомпозированные MVC-диаграммы в контейнере
+ */
+function displayMvcDiagrams(mvcDiagrams) {
+    const container = document.getElementById('mvcDiagramsContainer');
+    if (!container) return;
+    
+    if (!mvcDiagrams || mvcDiagrams.length === 0) {
+        container.innerHTML = '<div class="mvc-empty"><p>Выберите Use Case и нажмите "Декомпозировать" для генерации MVC</p></div>';
+        return;
+    }
+    
+    container.innerHTML = mvcDiagrams.map(mvc => {
+        const createdAt = new Date(mvc.createdAt).toLocaleString('ru-RU');
+        const updatedAt = new Date(mvc.updatedAt).toLocaleString('ru-RU');
+        const title = mvc.useCaseName || 'MVC';
+        const safeTitle = escapeHtml(title);
+        return `
+            <div class="mvc-item scenario-item" data-mvc-id="${escapeHtml(mvc.id)}">
+                <div class="scenario-header">
+                    <div class="scenario-title">${escapeHtml(mvc.useCaseName || 'Без названия')}</div>
+                    ${mvc.useCaseAlias ? `<div class="scenario-alias">${escapeHtml(mvc.useCaseAlias)}</div>` : ''}
+                </div>
+                <div class="scenario-meta">
+                    Создан: ${createdAt}${mvc.updatedAt !== mvc.createdAt ? ` | Обновлен: ${updatedAt}` : ''}
+                </div>
+                <pre class="mvc-plantuml">${escapeHtml(mvc.mvcPlantuml || '')}</pre>
+                <div class="scenario-actions">
+                    <button type="button" class="btn-view-document mvc-view-diagram">Просмотреть диаграмму</button>
+                    <button type="button" class="mvc-copy">Копировать</button>
+                    <button type="button" class="mvc-download">Скачать</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Привязываем обработчики к кнопкам MVC
+    container.querySelectorAll('.mvc-item').forEach(item => {
+        const mvcId = item.dataset.mvcId;
+        const plantumlEl = item.querySelector('.mvc-plantuml');
+        const plantumlCode = plantumlEl ? plantumlEl.textContent : '';
+        const useCaseName = item.querySelector('.scenario-title')?.textContent || 'MVC';
+        
+        item.querySelector('.mvc-view-diagram')?.addEventListener('click', () => {
+            if (plantumlCode && plantumlCode.trim() && typeof window.renderAndShowDiagram === 'function') {
+                window.renderAndShowDiagram(plantumlCode.trim(), 'MVC: ' + useCaseName);
+            } else {
+                showStatus('Нет данных диаграммы для отображения', 'warning');
+            }
+        });
+        item.querySelector('.mvc-copy')?.addEventListener('click', () => copyMvcDiagram(mvcId));
+        item.querySelector('.mvc-download')?.addEventListener('click', () => downloadMvcDiagram(mvcId, useCaseName));
+    });
+}
+
+function copyMvcDiagram(mvcId) {
+    const item = document.querySelector(`[data-mvc-id="${mvcId}"]`);
+    if (!item) return;
+    const content = item.querySelector('.mvc-plantuml')?.textContent || '';
+    navigator.clipboard.writeText(content).then(() => {
+        showStatus('MVC-диаграмма скопирована в буфер обмена', 'success');
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        showStatus('Ошибка копирования', 'error');
+    });
+}
+
+function downloadMvcDiagram(mvcId, useCaseName) {
+    const item = document.querySelector(`[data-mvc-id="${mvcId}"]`);
+    if (!item) return;
+    const content = item.querySelector('.mvc-plantuml')?.textContent || '';
+    const safeName = (useCaseName || 'mvc').replace(/[^a-z0-9\u0400-\u04FF]/gi, '_');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${safeName}_mvc.puml`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus('MVC-диаграмма скачана', 'success');
 }
 
 /**
@@ -975,3 +1079,106 @@ function showDocumentFromScenario(scenarioId) {
     }
 }
 
+// --- Документация: генерация и просмотр ---
+
+const DOCS_API = '/api/usecase/documentation';
+
+/** Показывает или скрывает блок с кнопками «Создать документацию» и «Документация» по данным сессии. */
+function updateDocumentationButtons(data) {
+    const section = document.getElementById('documentationActionsSection');
+    const createBtn = document.getElementById('createDocumentationBtn');
+    const viewBtn = document.getElementById('viewDocumentationBtn');
+    if (!section || !createBtn || !viewBtn) return;
+
+    const status = data?.artifacts?._status;
+    const hasDocs = data?.artifacts?.hasGeneratedDocs === true;
+
+    const showSection = status === 'COMPLETED' || hasDocs;
+    section.style.display = showSection ? 'flex' : 'none';
+    createBtn.style.display = status === 'COMPLETED' ? 'inline-flex' : 'none';
+    viewBtn.style.display = hasDocs ? 'inline-flex' : 'none';
+}
+
+function openDocumentationGenerateModal() {
+    // Если уже есть доки — предзаполняем имя папки для удобного обновления
+    const folderInput = document.getElementById('documentationFolderName');
+    const data = window.__lastSessionData;
+    if (data?.artifacts?.documentationFolderName) {
+        folderInput.value = data.artifacts.documentationFolderName;
+    } else {
+        folderInput.value = '';
+    }
+    document.getElementById('documentationGenerateError').style.display = 'none';
+    document.getElementById('documentationGenerateError').textContent = '';
+    document.getElementById('documentationGenerateModal').style.display = 'flex';
+    folderInput.focus();
+}
+
+function closeDocumentationGenerateModal() {
+    document.getElementById('documentationGenerateModal').style.display = 'none';
+}
+
+/** Открывает отдельную страницу просмотра документации с текущим requestId. */
+function openDocumentationPage() {
+    const requestId = getCurrentRequestId();
+    if (!requestId) {
+        showStatus('Нет активной сессии', 'error');
+        return;
+    }
+    window.location.href = '/iconix-documentation.html?requestId=' + encodeURIComponent(requestId);
+}
+
+async function handleGenerateDocumentation() {
+    const requestId = getCurrentRequestId();
+    if (!requestId) {
+        showStatus('Нет активной сессии', 'error');
+        return;
+    }
+    const folderName = document.getElementById('documentationFolderName').value.trim();
+    if (!folderName) {
+        document.getElementById('documentationGenerateError').textContent = 'Введите название папки.';
+        document.getElementById('documentationGenerateError').style.display = 'block';
+        return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(folderName)) {
+        document.getElementById('documentationGenerateError').textContent = 'Только буквы, цифры, дефис и подчёркивание.';
+        document.getElementById('documentationGenerateError').style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('generateDocumentationBtn');
+    const btnText = btn.querySelector('.btn-text');
+    const btnLoader = btn.querySelector('.btn-loader');
+    document.getElementById('documentationGenerateError').style.display = 'none';
+    btn.disabled = true;
+    btnText.style.display = 'none';
+    btnLoader.style.display = 'flex';
+
+    try {
+        const res = await fetch(DOCS_API + '/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId: requestId, folderName: folderName })
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.ok) {
+            closeDocumentationGenerateModal();
+            showStatus(body.updated ? 'Документация обновлена в каталоге «' + folderName + '»' : 'Документация успешно сгенерирована в каталоге «' + folderName + '»', 'success');
+            document.getElementById('viewDocumentationBtn').style.display = 'inline-flex';
+            document.getElementById('documentationActionsSection').style.display = 'flex';
+        } else if (res.status === 409) {
+            document.getElementById('documentationGenerateError').textContent = body.error || 'Каталог с таким именем уже существует. Укажите другое имя.';
+            document.getElementById('documentationGenerateError').style.display = 'block';
+        } else {
+            document.getElementById('documentationGenerateError').textContent = body.error || 'Ошибка генерации.';
+            document.getElementById('documentationGenerateError').style.display = 'block';
+        }
+    } catch (e) {
+        document.getElementById('documentationGenerateError').textContent = 'Ошибка сети: ' + e.message;
+        document.getElementById('documentationGenerateError').style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btnText.style.display = 'block';
+        btnLoader.style.display = 'none';
+    }
+}

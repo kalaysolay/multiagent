@@ -125,8 +125,7 @@ public class OrchestratorService {
                     sessionService.saveSession(ctx, plan, i, com.example.portal.agents.iconix.model.WorkflowStatus.PAUSED_FOR_REVIEW, 
                                              e.getReviewData(), null);
                     
-                    // Формируем ответ с информацией о паузе
-                    Map<String, Object> artifacts = buildArtifacts(ctx);
+                    Map<String, Object> artifacts = sessionService.buildCoreArtifacts(ctx.goal, ctx.narrativeEffective(), ctx.state);
                     artifacts.put("_status", "PAUSED_FOR_REVIEW");
                     artifacts.put("_reviewData", new com.fasterxml.jackson.databind.ObjectMapper()
                             .readValue(e.getReviewData(), Map.class));
@@ -138,8 +137,7 @@ public class OrchestratorService {
             // Все шаги выполнены
             sessionService.saveSession(ctx, plan, currentStepIndex, com.example.portal.agents.iconix.model.WorkflowStatus.COMPLETED, null, null);
             
-            // Формируем финальный ответ
-            Map<String, Object> artifacts = buildArtifacts(ctx);
+            Map<String, Object> artifacts = sessionService.buildCoreArtifacts(ctx.goal, ctx.narrativeEffective(), ctx.state);
             artifacts.put("_status", "COMPLETED");
             log.info("Оркестратор завершил выполнение. Request ID: {}", requestId);
             return new WorkflowResponse(requestId, plan, artifacts, ctx.logs);
@@ -151,27 +149,6 @@ public class OrchestratorService {
         }
     }
     
-    private Map<String, Object> buildArtifacts(Worker.Context ctx) {
-        Map<String, Object> artifacts = new LinkedHashMap<>();
-        if (ctx.goal != null && !ctx.goal.isBlank()) {
-            artifacts.put("goal", ctx.goal);
-        }
-        artifacts.put("narrative", ctx.narrativeEffective());
-        if (ctx.state.containsKey("plantuml")) artifacts.put("plantuml", ctx.state.get("plantuml"));
-        if (ctx.state.containsKey("issues")) artifacts.put("issues", ctx.state.get("issues"));
-        if (ctx.state.containsKey("narrativeIssues")) artifacts.put("narrativeIssues", ctx.state.get("narrativeIssues"));
-        if (ctx.state.containsKey("useCaseModel")) artifacts.put("useCaseModel", ctx.state.get("useCaseModel"));
-        if (ctx.state.containsKey("mvcDiagram")) artifacts.put("mvcDiagram", ctx.state.get("mvcDiagram"));
-        
-        // Добавляем сценарии как массив (пока один сценарий)
-        if (ctx.state.containsKey("scenario")) {
-            List<String> scenarios = List.of((String) ctx.state.get("scenario"));
-            artifacts.put("scenarios", scenarios);
-        }
-        
-        return artifacts;
-    }
-
     /**
      * План по умолчанию: сначала нарратив и ревью пользователем, затем модели.
      * UserReview сразу после narrative нужен, чтобы на вход model попадал уже согласованный нарратив.

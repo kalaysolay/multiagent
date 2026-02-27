@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Документация ICONIX</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <link rel="stylesheet" href="/css/workflow.css">
+    <link rel="stylesheet" href="/css/diagram-modal.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <style>
+        .doc-page { display: flex; flex-direction: column; height: calc(100vh - 60px); }
+        .doc-header { padding: 12px 20px; border-bottom: 1px solid #dee2e6; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .doc-body { display: grid; grid-template-columns: 240px 1fr; gap: 0; flex: 1; min-height: 0; overflow: hidden; }
+        .doc-file-list { border-right: 1px solid #dee2e6; overflow-y: auto; padding: 12px; background: #f8f9fa; }
+        .doc-file-list .file-item { display: block; width: 100%; padding: 8px 10px; margin-bottom: 4px; border: none; border-radius: 6px; background: transparent; text-align: left; cursor: pointer; font-size: 14px; color: #333; }
+        .doc-file-list .file-item:hover { background: #e9ecef; }
+        .doc-file-list .file-item.active { background: #667eea; color: #fff; }
+        .doc-content-panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+        .doc-toolbar { padding: 8px 12px; border-bottom: 1px solid #dee2e6; flex-shrink: 0; }
+        .doc-content { flex: 1; margin: 0; padding: 16px; overflow: auto; font-family: Consolas, Monaco, monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; background: #fafafa; }
+        .doc-content-rendered { flex: 1; margin: 0; padding: 16px; overflow: auto; background: #fff; }
+        .doc-content-rendered h1, .doc-content-rendered h2 { margin-top: 0; }
+        .doc-toolbar-adoc .btn { margin-right: 8px; }
+        .doc-empty { color: #6c757d; font-style: italic; padding: 16px; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div id="sidebar-container"></div>
+        <main class="main-content">
+            <div class="doc-page">
+                <div class="doc-header">
+                    <h1>Документация</h1>
+                    <a id="docBackLink" href="/iconix-agent-detail.html" class="back-link">← К workflow</a>
+                </div>
+                <div class="doc-body">
+                    <div class="doc-file-list" id="docFileList">
+                        <p class="doc-empty">Загрузка...</p>
+                    </div>
+                    <div class="doc-content-panel">
+                        <div class="doc-toolbar" id="docToolbar" style="display: none;">
+                            <button type="button" id="docRenderDiagramBtn" class="btn btn-primary">Отрендерить диаграмму</button>
+                        </div>
+                        <div class="doc-toolbar doc-toolbar-adoc" id="docToolbarAdoc" style="display: none;">
+                            <button type="button" id="docShowAsDocumentBtn" class="btn btn-primary">Показать как документ</button>
+                            <button type="button" id="docShowSourceBtn" class="btn btn-secondary">Показать исходник</button>
+                        </div>
+                        <pre id="docFileContent" class="doc-content"></pre>
+                        <div id="docFileContentRendered" class="doc-content-rendered" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="diagramModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Диаграмма</h2>
+                <button class="modal-close" id="closeDiagramModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="diagramContainer"></div>
+            </div>
+            <div class="modal-footer" style="display: none;"><span id="zoomLevel">100%</span></div>
+        </div>
+    </div>
+
+    <script src="/js/documentation.js"></script>
+    <script src="/js/diagram-modal.js"></script>
+</body>
+</html>

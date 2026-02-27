@@ -176,33 +176,32 @@
 
             <!-- Секция декомпозиции Use Case -->
             <div class="usecase-decomposition-section" id="usecaseDecompositionSection" style="display: none;">
-                <div class="decomposition-container">
-                    <!-- Левый контейнер: Use Case -->
-                    <div class="decomposition-left">
-                        <div class="decomposition-card">
-                            <h3>Декомпозиция Use Case</h3>
-                            <div class="decomposition-content">
-                                <div class="usecase-list-container">
-                                    <label>Выберите Use Case для декомпозиции:</label>
-                                    <div id="usecaseList" class="usecase-list">
-                                        <!-- Список Use Case будет добавлен динамически -->
-                                    </div>
+                <!-- Верхний блок на всю ширину: список Use Case + кнопка -->
+                <div class="decomposition-header">
+                    <div class="decomposition-card">
+                        <h3>Декомпозиция Use Case</h3>
+                        <div class="decomposition-content">
+                            <div class="usecase-list-container">
+                                <label>Выберите Use Case для декомпозиции:</label>
+                                <div id="usecaseList" class="usecase-list">
+                                    <!-- Список Use Case будет добавлен динамически -->
                                 </div>
-                                <div class="decomposition-actions">
-                                    <button id="decomposeButton" class="btn btn-primary" disabled>
-                                        <span class="btn-text">Декомпозировать</span>
-                                        <span class="btn-loader" style="display: none;">
-                                            <span class="spinner"></span>
-                                            Декомпозиция...
-                                        </span>
-                                    </button>
-                                </div>
+                            </div>
+                            <div class="decomposition-actions">
+                                <button id="decomposeButton" class="btn btn-primary" disabled>
+                                    <span class="btn-text">Декомпозировать</span>
+                                    <span class="btn-loader" style="display: none;">
+                                        <span class="spinner"></span>
+                                        Декомпозиция...
+                                    </span>
+                                </button>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Правый контейнер: Декомпозированные сценарии -->
-                    <div class="decomposition-right">
+                </div>
+                <!-- Две колонки: сценарии и MVC -->
+                <div class="decomposition-row">
+                    <div class="decomposition-scenarios">
                         <div class="decomposition-card">
                             <h3>Декомпозированные сценарии</h3>
                             <div id="scenariosContainer" class="scenarios-container">
@@ -212,11 +211,54 @@
                             </div>
                         </div>
                     </div>
+                    <div class="decomposition-mvc">
+                        <div class="decomposition-card">
+                            <h3>Декомпозированные MVC</h3>
+                            <div id="mvcDiagramsContainer" class="mvc-diagrams-container">
+                                <div class="mvc-empty">
+                                    <p>Выберите Use Case и нажмите "Декомпозировать" для генерации MVC</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Кнопки генерации и просмотра документации (видны при завершённом workflow / при наличии доков) -->
+            <div class="documentation-actions" id="documentationActionsSection" style="display: none;">
+                <button id="createDocumentationBtn" class="btn btn-primary">Создать документацию</button>
+                <button id="viewDocumentationBtn" class="btn btn-secondary" style="display: none;">Документация</button>
             </div>
 
             <div id="statusMessage" class="status-message"></div>
         </main>
+    </div>
+
+    <!-- Модальное окно: генерация документации -->
+    <div id="documentationGenerateModal" class="modal documentation-modal" style="display: none;">
+        <div class="modal-content documentation-modal-content">
+            <div class="modal-header">
+                <h2>Создать документацию</h2>
+                <button type="button" class="modal-close" id="closeDocumentationGenerateModal" aria-label="Закрыть">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="documentation-form">
+                    <label for="documentationFolderName">Название папки</label>
+                    <input type="text" id="documentationFolderName" placeholder="Например, feature-auth" autocomplete="off">
+                    <p class="documentation-hint">Файлы будут созданы в указанном каталоге на сервере.</p>
+                    <div id="documentationGenerateError" class="documentation-error" style="display: none;"></div>
+                    <button type="button" id="generateDocumentationBtn" class="btn btn-primary">
+                        <span class="btn-text">Сгенерировать документацию</span>
+                        <span class="btn-loader" style="display: none;"><span class="spinner"></span> Генерация...</span>
+                    </button>
+                </div>
+                <div class="documentation-git-placeholder">
+                    <label>Git ветка</label>
+                    <input type="text" disabled placeholder="Позже">
+                    <button type="button" class="btn btn-secondary" disabled>Отправить в Git</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Модальное окно для отображения диаграммы -->

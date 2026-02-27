@@ -1,6 +1,8 @@
 package com.example.workflow;
 
+import com.example.portal.agents.iconix.entity.UseCaseMvc;
 import com.example.portal.agents.iconix.entity.UseCaseScenario;
+import com.example.portal.agents.iconix.service.UseCaseMvcService;
 import com.example.portal.agents.iconix.service.UseCaseScenarioService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Контроллер для декомпозиции Use Case.
@@ -22,6 +23,7 @@ public class UseCaseDecompositionController {
     
     private final UseCaseDecompositionService decompositionService;
     private final UseCaseScenarioService scenarioService;
+    private final UseCaseMvcService mvcService;
     
     /**
      * Декомпозировать выбранные Use Case.
@@ -78,15 +80,17 @@ public class UseCaseDecompositionController {
     }
     
     /**
-     * Получить все декомпозированные сценарии для workflow сессии.
-     * 
+     * Получить декомпозированные сценарии и MVC-диаграммы для workflow сессии.
+     *
      * GET /api/usecase/decomposition/{requestId}
+     * Response: { scenarios: ScenarioDto[], mvcDiagrams: MvcDiagramDto[] }
      */
     @GetMapping("/{requestId}")
-    public ResponseEntity<ScenariosResponse> getScenarios(@PathVariable String requestId) {
+    public ResponseEntity<DecompositionArtifactsResponse> getArtifacts(@PathVariable String requestId) {
         try {
             List<UseCaseScenario> scenarios = scenarioService.getScenariosByRequestId(requestId);
-            
+            List<UseCaseMvc> mvcList = mvcService.getByRequestId(requestId);
+
             List<ScenarioDto> scenarioDtos = scenarios.stream()
                     .map(s -> new ScenarioDto(
                             s.getId().toString(),
@@ -97,13 +101,24 @@ public class UseCaseDecompositionController {
                             s.getUpdatedAt()
                     ))
                     .toList();
-            
-            return ResponseEntity.ok(new ScenariosResponse(scenarioDtos));
-            
+
+            List<MvcDiagramDto> mvcDtos = mvcList.stream()
+                    .map(m -> new MvcDiagramDto(
+                            m.getId().toString(),
+                            m.getUseCaseAlias(),
+                            m.getUseCaseName(),
+                            m.getMvcPlantuml(),
+                            m.getCreatedAt(),
+                            m.getUpdatedAt()
+                    ))
+                    .toList();
+
+            return ResponseEntity.ok(new DecompositionArtifactsResponse(scenarioDtos, mvcDtos));
+
         } catch (Exception e) {
-            log.error("Error getting scenarios for requestId: {}", requestId, e);
+            log.error("Error getting artifacts for requestId: {}", requestId, e);
             return ResponseEntity.internalServerError()
-                    .body(new ScenariosResponse(List.of()));
+                    .body(new DecompositionArtifactsResponse(List.of(), List.of()));
         }
     }
     
@@ -166,12 +181,27 @@ public class UseCaseDecompositionController {
     public record ScenariosResponse(
             List<ScenarioDto> scenarios
     ) {}
-    
+
+    /** Ответ GET /decomposition/{requestId}: сценарии и MVC-диаграммы. */
+    public record DecompositionArtifactsResponse(
+            List<ScenarioDto> scenarios,
+            List<MvcDiagramDto> mvcDiagrams
+    ) {}
+
     public record ScenarioDto(
             String id,
             String useCaseAlias,
             String useCaseName,
             String scenarioContent,
+            java.time.Instant createdAt,
+            java.time.Instant updatedAt
+    ) {}
+
+    public record MvcDiagramDto(
+            String id,
+            String useCaseAlias,
+            String useCaseName,
+            String mvcPlantuml,
             java.time.Instant createdAt,
             java.time.Instant updatedAt
     ) {}

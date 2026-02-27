@@ -329,11 +329,33 @@ body {
     .workflow-container {
         grid-template-columns: 1fr;
     }
+    .decomposition-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Секция декомпозиции Use Case */
 .usecase-decomposition-section {
     margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.decomposition-header {
+    width: 100%;
+}
+
+.decomposition-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.decomposition-scenarios,
+.decomposition-mvc {
+    display: flex;
+    flex-direction: column;
 }
 
 .decomposition-container {
@@ -532,6 +554,54 @@ body {
     cursor: pointer;
 }
 
+/* Контейнер для декомпозированных MVC */
+.mvc-diagrams-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 600px;
+}
+
+.mvc-empty {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+.mvc-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fdfdfd;
+}
+
+.mvc-item .scenario-header,
+.mvc-item .scenario-meta,
+.mvc-item .scenario-actions {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.mvc-item .scenario-actions {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.mvc-item .mvc-plantuml {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
 .scenario-actions button:hover {
     background: #f0f0f0;
 }
@@ -680,3 +750,88 @@ body {
     color: #c33;
 }
 
+/* Блок кнопок «Создать документацию» и «Документация» */
+.documentation-actions {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.documentation-actions .btn {
+    flex: 0 1 auto;
+}
+
+/* Модальное окно генерации документации — компактное */
+.documentation-modal .documentation-modal-content {
+    max-width: 520px;
+    max-height: 90vh;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.documentation-modal .modal-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.documentation-modal .modal-header h2 {
+    color: #333;
+}
+
+.documentation-modal .modal-body {
+    padding: 20px;
+}
+
+.documentation-form label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #555;
+}
+
+.documentation-form input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.documentation-hint {
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 12px;
+}
+
+.documentation-error {
+    color: #dc3545;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.documentation-form .btn {
+    margin-top: 8px;
+}
+
+.documentation-git-placeholder {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+}
+
+.documentation-git-placeholder label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #888;
+}
+
+.documentation-git-placeholder input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    background: #f5f5f5;
+}

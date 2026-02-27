@@ -45,7 +45,11 @@ public class WorkflowSession {
     
     @Column(name = "user_review_data", columnDefinition = "TEXT")
     private String userReviewData; // JSON с данными для ревью (issues, artifacts и т.д.)
-    
+
+    /** Имя папки с сгенерированной документацией (относительно базового пути). Если не null — показываем кнопку «Документация». */
+    @Column(name = "documentation_folder_name", length = 512)
+    private String documentationFolderName;
+
     @Column(name = "created_at")
     private Instant createdAt;
     
