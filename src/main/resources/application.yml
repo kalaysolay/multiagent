@@ -86,7 +86,7 @@ app:
     embedding-dimensions: 768   # OLLAMA (V11). Для OPENAI/CORPORATE — V12 (1536)
   # Папка на сервере, в которой создаются подпапки с документацией (имя подпапки задаёт пользователь)
   documentation:
-    output-base-path: ${DOCS_OUTPUT_PATH:./generated-docs}
+    output-base-path: ${DOCS_OUTPUT_PATH:D:\\generated-docs}
 
 # JWT конфигурация
 jwt:
