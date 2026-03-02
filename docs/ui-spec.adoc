@@ -1,0 +1,86 @@
+// Пользовательский интерфейс — спецификация для ТЗ ICONIX Agents
+// Включается в TZ_ICONIX_AGENTS.adoc
+
+== 4. Пользовательский интерфейс (UI)
+
+Фронтенд: статические HTML/CSS/JS, единый сайдбар (sidebar.js), проверка JWT (auth.js), все API-запросы с заголовком Authorization: Bearer <token>. При 401 — редирект на /login.html.
+
+=== 4.1. Общая структура страниц
+
+* Все страницы (кроме логина): контейнер с сайдбаром слева и основным контентом справа.
+* Сайдбар формируется sidebar.js по конфигу: разделы «Документация», «Агенты», «Чаты», «Администрирование» (только при isAdmin). Пункты: User Story (index), Рендерер PUML (render), ICONIX Agent (iconix-agent-list), Git Analyser (git-analyser), Chat with LLM (chat), Промпты (prompts), Векторное хранилище (vector-store).
+* auth.js: при загрузке страницы проверка токена; перехват fetch и подстановка Authorization; при 401 — очистка localStorage и редирект на login; метод logout(), isAdmin() из localStorage.
+
+=== 4.2. Страница входа (login.html)
+
+* Назначение: единственная точка входа без токена; после успешного входа — редирект на index.html.
+* Элементы: логотип (images/analyzer-logo.png), заголовок «Вход в систему», форма: логин (username), пароль (password), кнопка «Войти», блок ошибки (скрыт по умолчанию).
+* Поведение: submit формы → POST /api/auth/login, body { username, password }. При 200: сохранить в localStorage authToken, username, isAdmin, редирект на /index.html. При 401: показать сообщение из data.error. При загрузке: если уже есть токен, GET /api/auth/me с токеном; при 200 — редирект на index.html.
+
+=== 4.3. Главная страница (index.html)
+
+* Назначение: приветствие и навигация по разделам.
+* Контент: заголовок «Добро пожаловать в RUBICON», подзаголовок «Выберите раздел в меню слева», карточки «Документация» и «Агенты» (информационные).
+
+=== 4.4. Список сессий ICONIX (iconix-agent-list.html)
+
+* Назначение: список сессий workflow и создание новой сессии.
+* Верх: заголовок «ICONIX Agent», подзаголовок «Список запущенных агентов».
+* Блок «Создать новый запрос»: textarea «Нарратив / Запрос» (id newNarrativeInput), кнопка «Создать запрос». По клику: POST /workflow/run с body { goal: значение textarea }. При успехе: переход на iconix-agent-detail.html?requestId=<requestId> из ответа.
+* Таблица: колонки №, Request Id, Status, Автор, Дата запуска, Дата завершения. Данные: GET /workflow/sessions. Строки кликабельны: переход на iconix-agent-detail.html?requestId=<requestId>.
+
+=== 4.5. Детали сессии ICONIX (iconix-agent-detail.html)
+
+* Назначение: ввод цели, запуск и возобновление workflow, просмотр и правка артефактов, декомпозиция Use Case, генерация и просмотр документации.
+
+* Загрузка: при наличии requestId в URL — GET /workflow/session/{requestId}; заполнение полей из data.artifacts (goal → narrativeInput, narrative → narrativeOutput, plantuml → domainOutput, useCaseModel → usecaseOutput, mvcDiagram → mvcOutput, scenario/scenarios → scenarioOutput). Отображение кнопки «Отправить обновления» и блока ревью при status PAUSED_FOR_REVIEW.
+
+* Левая панель:
+** Textarea «Цель / Запрос» (narrativeInput).
+** Кнопки: «Отправить запрос» (sendButton), «Отправить обновления» (resumeButton, видна при паузе).
+** Блок sessionInfo: отображение requestId.
+
+* Правая панель — вкладки:
+** Нарратив: textarea narrativeOutput, кнопка «Копировать».
+** Доменная модель: textarea domainOutput (редактируемый), кнопки «Просмотреть диаграмму», «Копировать». Просмотр: модальное окно с рендером через POST /render/png или /render/svg.
+** Диаграмма прецедентов: usecaseOutput, «Просмотреть диаграмму», «Копировать».
+** MVC-модель: mvcOutput, аналогично.
+** Сценарии: scenarioOutput, «Копировать».
+
+* Действия:
+** «Отправить запрос»: POST /workflow/run { goal }. При успехе — редирект или обновление данных с новым requestId.
+** «Отправить обновления»: POST /workflow/resume с requestId, narrative (из narrativeOutput), domainModel (из domainOutput). После ответа — обновить артефакты на экране.
+
+* Секция «Декомпозиция Use Case»: показывается при наличии useCaseModel. Список Use Case парсится из PlantUML; чекбоксы для выбора. Кнопка «Декомпозировать»: POST /api/usecase/decomposition с requestId и массивом { alias, name }. Результаты: блоки «Декомпозированные сценарии» и «Декомпозированные MVC» — данные из GET /api/usecase/decomposition/{requestId}.
+
+* Блок «Документация»: кнопки «Создать документацию», «Документация». «Создать документацию» — модальное окно: поле «Название папки», POST /api/usecase/documentation/generate { requestId, folderName }. «Документация» — переход на iconix-documentation.html?requestId=...
+
+* Модальные окна: диаграмма (zoom, fullscreen, скачать PNG/SVG), документ AsciiDoc (рендер в HTML, скачать HTML), генерация документации.
+
+=== 4.6. Страница просмотра документации (iconix-documentation.html)
+
+* Открывается с requestId в URL. Заголовок «Документация», ссылка «← К workflow» на iconix-agent-detail.html?requestId=...
+* Левый сайдбар: список файлов — GET /api/usecase/documentation/{requestId}/files. Клик по файлу: GET /api/usecase/documentation/{requestId}/files/{fileName} (text/plain) → вывод в основной панели.
+* Основная панель: исходник (pre) или рендер. Для .puml — кнопка «Отрендерить диаграмму» (POST /render/png или /render/svg). Для .adoc — кнопки «Показать как документ» (POST /render/adoc) и «Показать исходник».
+
+=== 4.7. Чат (chat.html)
+
+* Режимы: «Простой чат (через Spring AI)» и «LibreChat (отдельное приложение)». По умолчанию — простой чат.
+* Простой чат: блок сообщений (chatMessages), поле ввода (chatInput), кнопка «Отправить». Отправка: POST /api/chat с body { message, history?, workflowSessionId?, conversationId? }. Ответ: response, toolCalls, diagrams, conversationId. История: GET /api/chat/history?conversationId=&limit=20. Разговоры: GET /api/chat/conversations.
+* LibreChat: iframe на настраиваемый URL (например, localhost:3080).
+
+=== 4.8. Рендерер PlantUML (render.html)
+
+* Textarea для ввода кода PlantUML. Кнопки: «Отобразить диаграмму» (POST /render/png или /render/svg), «Проверить синтаксис» (POST /render/validate), «Очистить». Результат валидации — в отдельном блоке. Диаграмма — в модальном окне.
+
+=== 4.9. Git Analyser (git-analyser.html)
+
+* Поля: URL репозитория, ветка, Access Token (опционально). Кнопка «Запустить анализ» → POST /api/git-analyser/analyze с { repositoryUrl, branch, accessToken }. Результаты: общие цифры (всего файлов, проанализировано), списки неиспользуемых файлов (filePath, reason, fileSize) и битых ссылок (sourceFile, referencedPath, lineNumber, referenceType).
+
+=== 4.10. Промпты (prompts.html) — только для администраторов
+
+* Таблица промптов: код, название, превью/размер, дата обновления. Данные: GET /api/prompts. Клик по строке: GET /api/prompts/{code} → модальное окно с полным текстом и кнопкой «Сохранить» (PUT /api/prompts/{code} с телом { content }). История: GET /api/prompts/{code}/history. Раздел в меню только при isAdmin.
+
+=== 4.11. Векторное хранилище (vector-store.html) — только для администраторов
+
+* Загрузка: drag-and-drop или выбор файлов, POST /api/vector-store/documents/upload (multipart). Добавление текста: POST /api/vector-store/documents { content, metadata? }. Пакетное: POST /api/vector-store/documents/batch { documents: string[] }. Список: GET /api/vector-store/documents?page=&size= (id, contentPreview, metadata, createdAt). Удаление: DELETE /api/vector-store/documents/{id}. Поиск: POST /api/vector-store/search { query, topK? } → results (id, content, similarity, metadata).

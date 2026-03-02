@@ -64,7 +64,31 @@ public class WorkflowSessionService {
     public Optional<WorkflowSession> loadSession(String requestId) {
         return repository.findByRequestId(requestId);
     }
-    
+
+    /**
+     * Создаёт сессию для асинхронного run: goal и план уже заданы, статус RUNNING.
+     * После возврата 202 клиент опрашивает GET /session/{requestId}.
+     */
+    @Transactional
+    public void createSessionForRun(String requestId, String goal,
+                                    com.example.portal.agents.iconix.model.OrchestratorPlan plan) {
+        if (repository.findByRequestId(requestId).isPresent()) {
+            throw new IllegalStateException("Session already exists: " + requestId);
+        }
+        WorkflowSession session = WorkflowSession.builder()
+                .requestId(requestId)
+                .goal(goal != null ? goal : "")
+                .narrative("")
+                .contextStateJson(null)
+                .logsJson(null)
+                .planJson(serializePlan(plan))
+                .currentStepIndex(0)
+                .status(com.example.portal.agents.iconix.model.WorkflowStatus.RUNNING)
+                .build();
+        repository.save(session);
+        log.info("Created session for async run: requestId={}", requestId);
+    }
+
     @Transactional(readOnly = true)
     public List<WorkflowSessionSummary> getAllSessions() {
         return repository.findAll().stream()
@@ -131,6 +155,7 @@ public class WorkflowSessionService {
                 ctx.state
         );
         artifacts.put("_status", session.getStatus().toString());
+        artifacts.put("_currentStepIndex", session.getCurrentStepIndex());
         // Флаг и имя папки для кнопки «Документация» и предзаполнения формы обновления
         String docFolder = session.getDocumentationFolderName();
         artifacts.put("hasGeneratedDocs", docFolder != null && !docFolder.isBlank());

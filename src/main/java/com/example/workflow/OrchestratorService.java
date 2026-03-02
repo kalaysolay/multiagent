@@ -44,8 +44,8 @@ public class OrchestratorService {
 
         // 1) Сформировать план: narrative → userReview → модели (качественный нарратив до построения моделей)
         OrchestratorPlan plan = buildDefaultPlan();
-        ctx.log("plan: Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario");
-        log.info("План: Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario. Шагов: {}", plan.plan().size());
+        ctx.log("plan: Narrative → UserReview → Model → Review → Model(refine) → UseCase");
+        log.info("План: Narrative → UserReview → Model → Review → Model(refine) → UseCase. Шагов: {}", plan.plan().size());
 
         // 2) Исполнить шаги
         return executeSteps(ctx, plan, requestId);
@@ -150,23 +150,44 @@ public class OrchestratorService {
     }
     
     /**
-     * План по умолчанию: сначала нарратив и ревью пользователем, затем модели.
-     * UserReview сразу после narrative нужен, чтобы на вход model попадал уже согласованный нарратив.
+     * План по умолчанию: нарратив, ревью, модели, Use Case. MVC и сценарии — только при декомпозиции по Use Case.
      */
     private OrchestratorPlan buildDefaultPlan() {
         List<PlanStep> steps = List.of(
                 new PlanStep("narrative", Map.of()),
-                new PlanStep("userReview", Map.of()), // Пауза: пользователь проверяет/правит нарратив (доменной модели ещё нет)
+                new PlanStep("userReview", Map.of()),
                 new PlanStep("model", Map.of("mode", "generate")),
                 new PlanStep("review", Map.of("target", "model")),
                 new PlanStep("model", Map.of("mode", "refine")),
-                new PlanStep("usecase", Map.of()),
-                new PlanStep("mvc", Map.of()),
-                new PlanStep("scenario", Map.of())
+                new PlanStep("usecase", Map.of())
         );
         return new OrchestratorPlan(
-                "Narrative → UserReview → Model → Review → Model(refine) → UseCase → MVC → Scenario. Ревью нарратива до построения моделей.",
+                "Narrative → UserReview → Model → Review → Model(refine) → UseCase. MVC и сценарии — при декомпозиции.",
                 steps
         );
+    }
+
+    /** План по умолчанию для создания сессии при асинхронном run. */
+    public OrchestratorPlan getDefaultPlan() {
+        return buildDefaultPlan();
+    }
+
+    /**
+     * Выполняет шаги плана в фоне (после возврата 202 клиенту).
+     * Сессия уже создана с goal и планом.
+     */
+    public void runAsync(String requestId) {
+        try {
+            var session = sessionService.loadSession(requestId)
+                    .orElseThrow(() -> new IllegalArgumentException("Session not found: " + requestId));
+            Worker.Context ctx = sessionService.restoreContext(session);
+            OrchestratorPlan plan = sessionService.restorePlan(session);
+            log.info("Async run started for requestId: {}", requestId);
+            executeStepsFromIndex(ctx, plan, 0, requestId);
+            log.info("Async run finished for requestId: {}", requestId);
+        } catch (Exception e) {
+            log.error("Async run failed for requestId: " + requestId, e);
+            throw new RuntimeException(e);
+        }
     }
 }

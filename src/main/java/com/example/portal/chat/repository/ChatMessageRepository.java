@@ -1,6 +1,7 @@
 package com.example.portal.chat.repository;
 
 import com.example.portal.chat.entity.ChatMessage;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,6 +28,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
      * Получить сообщения по conversation ID, отсортированные хронологически.
      */
     List<ChatMessage> findByConversationIdOrderByCreatedAtAsc(String conversationId);
+
+    /**
+     * Получить последние N сообщений разговора (новые первые). Для контекста LLM берём с Pageable и разворачиваем.
+     */
+    List<ChatMessage> findByConversationIdOrderByCreatedAtDesc(String conversationId, Pageable pageable);
     
     /**
      * Получить уникальные conversation IDs, отсортированные по последней активности.

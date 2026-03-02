@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +19,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -174,12 +176,12 @@ class ChatControllerTest {
                 .createdAt(Instant.now())
                 .build();
         
-        when(chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(TEST_CONVERSATION_ID))
-                .thenReturn(List.of(userMsg, assistantMsg));
-        
+        when(chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(eq(TEST_CONVERSATION_ID), any(PageRequest.class)))
+                .thenReturn(List.of(assistantMsg, userMsg)); // desc: newest first; controller reverses to chronological
+
         // WHEN
         ChatController.ChatHistoryResponse response = chatController.getHistory(TEST_CONVERSATION_ID, 20);
-        
+
         // THEN
         assertThat(response.messages()).hasSize(2);
         assertThat(response.messages().get(0).role()).isEqualTo("user");
@@ -230,9 +232,9 @@ class ChatControllerTest {
                 .createdAt(Instant.now())
                 .build();
         
-        when(chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(TEST_CONVERSATION_ID))
+        when(chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(eq(TEST_CONVERSATION_ID), any(PageRequest.class)))
                 .thenReturn(List.of(assistantMsg));
-        
+
         // WHEN
         ChatController.ChatHistoryResponse response = chatController.getHistory(TEST_CONVERSATION_ID, 20);
         

@@ -1,7 +1,9 @@
 const API_BASE = '/workflow';
+const POLL_INTERVAL_MS = 2000;
 
 let currentRequestId = null;
 let isPausedForReview = false;
+let pollTimerId = null;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
@@ -52,10 +54,6 @@ async function loadSessionFromUrl() {
                     document.getElementById('usecaseOutput').value = cleanText(data.artifacts.useCaseModel);
                     // Парсим и отображаем Use Case после загрузки данных
                     setTimeout(() => parseAndDisplayUseCases(), 100);
-                }
-                
-                if (data.artifacts.mvcDiagram) {
-                    document.getElementById('mvcOutput').value = cleanText(data.artifacts.mvcDiagram);
                 }
                 
                 // Заполняем сценарии (массив)
@@ -113,6 +111,9 @@ async function loadSessionFromUrl() {
             // Показываем/скрываем кнопки документации в зависимости от статуса и наличия доков
             updateDocumentationButtons(data);
 
+            // Плашка пайплайна агентов
+            renderPipelineStrip(data);
+
         } catch (error) {
             console.error('Error loading session:', error);
             showStatus(`Ошибка загрузки сессии: ${error.message}`, 'error');
@@ -138,6 +139,51 @@ function ensureDiagramButtonHandlers() {
     } else {
         console.warn('initViewDiagramButtons function not found');
     }
+}
+
+const PIPELINE_STEP_LABELS = {
+    narrative: 'Нарратив',
+    userReview: 'Ревью',
+    model: 'Доменная модель',
+    review: 'Ревью модели',
+    usecase: 'Use Case',
+    mvc: 'MVC',
+    scenario: 'Сценарии'
+};
+
+function renderPipelineStrip(data) {
+    const container = document.getElementById('pipelineStrip');
+    if (!container) return;
+
+    const plan = data?.orchestrator?.plan;
+    if (!plan || !Array.isArray(plan) || plan.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    const currentStepIndex = typeof data?.artifacts?._currentStepIndex === 'number'
+        ? data.artifacts._currentStepIndex
+        : -1;
+    const status = data?.artifacts?._status || '';
+
+    const stepsHtml = plan.map((step, index) => {
+        const tool = step.tool || step;
+        const label = PIPELINE_STEP_LABELS[tool] || tool;
+        let state = 'pending';
+        if (status === 'COMPLETED' || status === 'FAILED') {
+            state = index <= currentStepIndex ? 'done' : 'pending';
+        } else if (index < currentStepIndex) {
+            state = 'done';
+        } else if (index === currentStepIndex) {
+            state = (status === 'RUNNING' || status === 'PAUSED_FOR_REVIEW') ? 'current' : 'done';
+        }
+        const stateClass = 'pipeline-step--' + state;
+        const icon = state === 'done' ? '✓' : (state === 'current' ? '…' : '');
+        return `<span class="pipeline-step ${stateClass}" title="${escapeHtml(label)}">${icon ? '<span class="pipeline-step-icon">' + icon + '</span>' : ''}<span class="pipeline-step-label">${escapeHtml(label)}</span></span>`;
+    }).join('<span class="pipeline-arrow" aria-hidden="true">→</span>');
+
+    container.innerHTML = stepsHtml;
+    container.style.display = 'flex';
 }
 
 function initEventListeners() {
@@ -196,7 +242,6 @@ function initEventListeners() {
     // Отслеживание изменений в полях PlantUML для активации/деактивации кнопок
     const domainField = document.getElementById('domainOutput');
     const usecaseField = document.getElementById('usecaseOutput');
-    const mvcField = document.getElementById('mvcOutput');
     
     if (domainField) {
         domainField.addEventListener('input', updateViewDiagramButtons);
@@ -207,9 +252,6 @@ function initEventListeners() {
             // Также обновляем список Use Case при изменении содержимого
             parseAndDisplayUseCases();
         });
-    }
-    if (mvcField) {
-        mvcField.addEventListener('input', updateViewDiagramButtons);
     }
 }
 
@@ -264,9 +306,20 @@ async function sendRequest() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
-        handleResponse(data);
-        
+        const body = await response.json();
+        if (response.status === 202 && body.requestId) {
+            currentRequestId = body.requestId;
+            document.getElementById('sessionId').textContent = currentRequestId;
+            document.getElementById('sessionInfo').style.display = 'block';
+            const url = new URL(window.location.href);
+            url.searchParams.set('requestId', currentRequestId);
+            window.history.replaceState({}, '', url);
+            showStatus('Запрос принят, выполнение в фоне…', 'info');
+            startPolling(currentRequestId);
+        } else {
+            const data = body;
+            if (data.requestId) handleResponse(data);
+        }
     } catch (error) {
         console.error('Error:', error);
         showStatus(`Ошибка: ${error.message}`, 'error');
@@ -296,8 +349,6 @@ async function sendResume() {
     btnLoader.style.display = 'flex';
     
     try {
-        // JSON.stringify автоматически экранирует все специальные символы
-        // Не нужно дополнительное экранирование
         const response = await fetch(`${API_BASE}/resume`, {
             method: 'POST',
             headers: {
@@ -314,10 +365,14 @@ async function sendResume() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data = await response.json();
-        handleResponse(data);
-        showStatus('Обновления отправлены успешно', 'success');
-        
+        const body = await response.json();
+        if (response.status === 202) {
+            showStatus('Обновления приняты, выполнение в фоне…', 'info');
+            startPolling(currentRequestId);
+        } else {
+            handleResponse(body);
+            showStatus('Обновления отправлены успешно', 'success');
+        }
     } catch (error) {
         console.error('Error:', error);
         showStatus(`Ошибка при отправке обновлений: ${error.message}`, 'error');
@@ -326,6 +381,40 @@ async function sendResume() {
         btnText.style.display = 'block';
         btnLoader.style.display = 'none';
     }
+}
+
+function stopPolling() {
+    if (pollTimerId) {
+        clearTimeout(pollTimerId);
+        pollTimerId = null;
+    }
+}
+
+async function pollOnce(requestId) {
+    try {
+        const response = await fetch(`${API_BASE}/session/${requestId}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        window.__lastSessionData = data;
+        handleResponse(data);
+        const status = data?.artifacts?._status;
+        if (status === 'RUNNING') {
+            pollTimerId = setTimeout(() => pollOnce(requestId), POLL_INTERVAL_MS);
+        } else {
+            stopPolling();
+            if (status === 'COMPLETED' || status === 'PAUSED_FOR_REVIEW') {
+                if (requestId) loadDecomposedArtifacts(requestId);
+            }
+        }
+    } catch (e) {
+        console.warn('Poll error:', e);
+        pollTimerId = setTimeout(() => pollOnce(requestId), POLL_INTERVAL_MS);
+    }
+}
+
+function startPolling(requestId) {
+    stopPolling();
+    pollOnce(requestId);
 }
 
 function handleResponse(data) {
@@ -382,10 +471,6 @@ function handleResponse(data) {
             }, 200);
         }
         
-        if (data.artifacts.mvcDiagram) {
-            document.getElementById('mvcOutput').value = cleanText(data.artifacts.mvcDiagram);
-        }
-        
         // Заполняем сценарии (массив)
         if (data.artifacts.scenarios && Array.isArray(data.artifacts.scenarios) && data.artifacts.scenarios.length > 0) {
             // Берем первый сценарий (пока один)
@@ -402,6 +487,9 @@ function handleResponse(data) {
 
     // Кнопки документации (Создать / Документация)
     updateDocumentationButtons(data);
+
+    // Плашка пайплайна агентов
+    renderPipelineStrip(data);
 
     // Переключаемся на первую вкладку с данными
     if (data.artifacts?.narrative) {
@@ -430,13 +518,6 @@ function updateViewDiagramButtons() {
         console.log('UseCase button disabled:', !hasContent, 'Content length:', usecaseField.value.trim().length);
     }
     
-    const mvcBtn = document.getElementById('viewMvcDiagram');
-    const mvcField = document.getElementById('mvcOutput');
-    if (mvcBtn && mvcField) {
-        const hasContent = mvcField.value.trim().length > 0;
-        mvcBtn.disabled = !hasContent;
-        console.log('MVC button disabled:', !hasContent, 'Content length:', mvcField.value.trim().length);
-    }
 }
 
 function cleanText(text) {
@@ -483,7 +564,6 @@ function copyToClipboard(fieldName) {
         'narrative': 'narrativeOutput',
         'domain': 'domainOutput',
         'usecase': 'usecaseOutput',
-        'mvc': 'mvcOutput',
         'scenario': 'scenarioOutput'
     };
     

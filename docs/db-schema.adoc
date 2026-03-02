@@ -1,0 +1,163 @@
+// База данных — подробная схема для ТЗ ICONIX Agents
+// Включается в TZ_ICONIX_AGENTS.adoc
+
+== 3. База данных (подробная схема)
+
+СУБД: PostgreSQL. Миграции: Flyway, порядок V1…V16.
+
+=== 3.1. Таблица workflow_sessions
+
+Хранение сессий workflow для паузы, возобновления и отображения в UI.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| request_id | VARCHAR(36) | PRIMARY KEY | UUID сессии
+| narrative | TEXT | | Текущий нарратив (исходный или сгенерированный)
+| goal | TEXT | | Цель, введённая пользователем
+| context_state | TEXT | | JSON: состояние контекста агентов (plantuml, useCaseModel, mvcDiagram, scenario, issues, narrativeIssues и т.д.)
+| logs | TEXT | | JSON: массив строк логов шагов
+| plan_json | TEXT | | JSON: OrchestratorPlan (analysis, plan — массив PlanStep)
+| current_step_index | INTEGER | NOT NULL DEFAULT 0 | Индекс текущего шага в плане (0-based)
+| status | VARCHAR(50) | NOT NULL DEFAULT 'RUNNING' | RUNNING | PAUSED_FOR_REVIEW | COMPLETED | FAILED
+| user_review_data | TEXT | | JSON: данные для ревью (артефакты, issues), отображаемые при паузе
+| max_iterations | INTEGER | | Опционально
+| documentation_folder_name | VARCHAR(512) | | Имя папки сгенерированной документации (если есть)
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индексы: idx_workflow_sessions_status, idx_workflow_sessions_created_at.
+
+Примечание: колонка task удалена миграцией V14 (остаётся только goal).
+
+=== 3.2. Таблица document_embeddings (векторное хранилище)
+
+Для RAG: эмбеддинги документов и векторный поиск. Требуется расширение pgvector.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| content | TEXT | NOT NULL | Исходный текст документа
+| embedding | vector(N) | | N зависит от провайдера: 1536 (OpenAI, V12), 768 (Ollama, V11), 1024 (Salesforce, V13)
+| metadata | JSONB | | Метаданные
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индекс: HNSW по embedding (vector_cosine_ops). Индекс по created_at.
+
+=== 3.3. Таблица chat_messages
+
+Сообщения чата с LLM и tool calling.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| role | VARCHAR(20) | NOT NULL | USER | ASSISTANT | TOOL
+| content | TEXT | NOT NULL | Текст сообщения или результат инструмента
+| tool_calls_json | TEXT | | JSON массив вызовов для ASSISTANT: [{ id, name, arguments }]
+| tool_call_id | VARCHAR(100) | | Для роли TOOL: связь с вызовом в ASSISTANT
+| tool_name | VARCHAR(100) | | Для роли TOOL: имя инструмента
+| conversation_id | VARCHAR(36) | | Группировка сообщений в один разговор
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индексы: idx_chat_messages_created_at DESC, idx_chat_messages_conversation_id, idx_chat_messages_tool_call_id.
+
+=== 3.4. Таблица use_case_scenarios
+
+Сценарии Use Case (AsciiDoc), сгенерированные при декомпозиции или в workflow.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| request_id | VARCHAR(36) | NOT NULL | ID сессии workflow
+| use_case_alias | VARCHAR(255) | | Алиас Use Case (например, reviewGiftByOfficer)
+| use_case_name | VARCHAR(500) | | Человекочитаемое название
+| scenario_content | TEXT | NOT NULL | AsciiDoc сценарий
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индексы: idx_use_case_scenarios_request_id, idx_use_case_scenarios_created_at, idx_use_case_scenarios_request_id_alias.
+
+=== 3.5. Таблица use_case_mvc
+
+Декомпозированные MVC-диаграммы (PlantUML) по Use Case.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| request_id | VARCHAR(36) | NOT NULL |
+| use_case_alias | VARCHAR(255) | |
+| use_case_name | VARCHAR(500) | |
+| mvc_plantuml | TEXT | NOT NULL | PlantUML код
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индексы: idx_use_case_mvc_request_id, idx_use_case_mvc_request_id_alias, idx_use_case_mvc_created_at.
+
+=== 3.6. Таблица users
+
+Пользователи системы (аутентификация и роли).
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| username | VARCHAR(50) | UNIQUE NOT NULL | Логин
+| password | VARCHAR(255) | NOT NULL | Хеш пароля (BCrypt)
+| enabled | BOOLEAN | NOT NULL DEFAULT true | Активность учётной записи
+| is_admin | BOOLEAN | NOT NULL DEFAULT false | Права администратора
+| created_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+|===
+
+Индекс: idx_users_username. При необходимости добавить deleted_at (soft delete) отдельной миграцией.
+
+=== 3.7. Таблица prompts
+
+Справочник системных промптов для агентов.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| code | VARCHAR(100) | UNIQUE NOT NULL | Код промпта (используется в коде)
+| name | VARCHAR(255) | NOT NULL | Название для UI
+| content | TEXT | NOT NULL | Текст промпта
+| description | TEXT | | Назначение (для админа)
+| updated_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| updated_by | UUID | REFERENCES users(id) | Кто последним обновил
+|===
+
+Индекс: idx_prompts_code.
+
+=== 3.8. Таблица prompts_history
+
+История изменений промптов.
+
+[cols="1,2,2,2"]
+|===
+| Колонка | Тип | Ограничения | Описание
+| id | UUID | PRIMARY KEY DEFAULT gen_random_uuid() |
+| prompt_id | UUID | NOT NULL REFERENCES prompts(id) ON DELETE CASCADE |
+| content | TEXT | NOT NULL | Текст до изменения
+| changed_at | TIMESTAMP | NOT NULL DEFAULT CURRENT_TIMESTAMP |
+| changed_by | UUID | REFERENCES users(id) |
+| change_reason | VARCHAR(500) | | Причина изменения (опционально)
+|===
+
+Индекс: idx_prompts_history_prompt_id.
+
+=== 3.9. Связи между таблицами
+
+* prompts.updated_by → users.id
+* prompts_history.prompt_id → prompts.id
+* prompts_history.changed_by → users.id
+* Остальные таблицы: request_id и conversation_id — строковые идентификаторы, без FK на другие доменные таблицы.

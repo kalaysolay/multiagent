@@ -37,9 +37,7 @@ class OrchestratorServiceTest {
             "model",
             "review",
             "model",
-            "usecase",
-            "mvc",
-            "scenario"
+            "usecase"
     );
 
     @Mock

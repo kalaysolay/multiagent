@@ -8,8 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -92,8 +95,10 @@ public class ChatController {
         List<ChatMessage> messages;
         
         if (conversationId != null && !conversationId.isBlank()) {
-            // Получаем сообщения конкретного разговора
-            messages = chatMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId);
+            // Получаем последние N сообщений разговора (новые первые), копируем и разворачиваем в хронологический порядок
+            List<ChatMessage> desc = chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId, PageRequest.of(0, limit));
+            messages = new ArrayList<>(desc);
+            Collections.reverse(messages);
         } else {
             // Получаем последние сообщения (от новых к старым, потом разворачиваем)
             messages = chatMessageRepository.findTopNByOrderByCreatedAtDesc(limit);

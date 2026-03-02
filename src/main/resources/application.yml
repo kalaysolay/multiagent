@@ -46,7 +46,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: false
+    show-sqm  l: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -87,6 +87,9 @@ app:
   # Папка на сервере, в которой создаются подпапки с документацией (имя подпапки задаёт пользователь)
   documentation:
     output-base-path: ${DOCS_OUTPUT_PATH:D:\\generated-docs}
+  # Чат: макс. число сообщений истории (user/assistant) в контексте LLM
+  chat:
+    context-messages-limit: ${CHAT_CONTEXT_MESSAGES_LIMIT:30}
 
 # JWT конфигурация
 jwt:

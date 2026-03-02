@@ -2,8 +2,11 @@ package com.example.workflow;
 
 import com.example.portal.chat.entity.ChatMessage;
 import com.example.portal.chat.repository.ChatMessageRepository;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
 import com.example.portal.shared.service.RagService;
 import com.example.workflow.tools.DatabaseTools;
+import com.example.workflow.tools.JiraConfluenceTools;
 import com.example.workflow.tools.McpAgentTools;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +22,7 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Сервис для чата с поддержкой Tool Calling.
@@ -35,8 +39,13 @@ public class ToolCallingChatService {
     private final WorkflowSessionService workflowSessionService;
     private final DatabaseTools databaseTools;
     private final McpAgentTools mcpAgentTools;
+    private final JiraConfluenceTools jiraConfluenceTools;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /** Макс. число сообщений (user/assistant) истории разговора в контексте LLM. */
+    @Value("${app.chat.context-messages-limit:30}")
+    private int contextMessagesLimit;
     
     private static final int MAX_TOOL_ITERATIONS = 5;
     
@@ -52,20 +61,28 @@ public class ToolCallingChatService {
     public ChatResult processMessage(String userMessage, List<Map<String, String>> chatHistory, 
                                      String workflowSessionId, String conversationId) {
         log.info("Processing message with tool calling support. ConversationId: {}", conversationId);
-        
+
+        // Если conversationId передан — история будет загружена из БД; иначе используем переданную с клиента
+        boolean useHistoryFromDb = conversationId != null && !conversationId.isBlank();
+
         // Генерируем conversationId если не передан
-        if (conversationId == null || conversationId.isBlank()) {
+        if (!useHistoryFromDb) {
             conversationId = UUID.randomUUID().toString();
         }
-        
+
         // Сохраняем сообщение пользователя
         saveUserMessage(userMessage, conversationId);
-        
+
+        // История для контекста LLM: при наличии conversationId — из БД (источник правды), иначе — с клиента
+        List<Map<String, String>> historyForContext = useHistoryFromDb
+                ? loadHistoryFromDb(conversationId)
+                : (chatHistory != null ? chatHistory : List.of());
+
         // Формируем системный промпт с контекстом
         String systemPrompt = buildSystemPrompt(userMessage, workflowSessionId);
-        
+
         // Собираем историю сообщений для LLM
-        List<Message> messages = buildMessages(systemPrompt, userMessage, chatHistory);
+        List<Message> messages = buildMessages(systemPrompt, userMessage, historyForContext);
         
         // Создаем список функций для tool calling
         List<FunctionCallback> functions = createFunctionCallbacks();
@@ -161,12 +178,16 @@ public class ToolCallingChatService {
         StringBuilder promptBuilder = new StringBuilder();
         
         promptBuilder.append("""
-                Ты - умный ассистент для работы с системой ICONIX моделирования.
+                Ты - умный ассистент для работы с системой ICONIX моделирования и с Jira/Confluence.
                 У тебя есть доступ к инструментам для:
                 1. Получения информации о workflow сессиях и их артефактах (доменные модели, use case диаграммы, сценарии)
                 2. Генерации различных диаграмм ICONIX (доменная модель, use case, MVC, sequence)
                 3. Ревью моделей и нарративов
+                4. Jira: получить задачу по ключу (например TASK-12345), связанные задачи (issue links), удалённые ссылки (в т.ч. на Confluence)
+                5. Confluence: получить контент страницы по id/ключу, поиск страниц
                 
+                Для запросов вида «в задаче TASK-XXX найди связанные документы и расскажи что делать»:
+                вызови getJiraIssue(ключ), затем getJiraRelatedIssues и/или getJiraRemoteLinks, по полученным ссылкам на страницы Confluence — getConfluencePage, изучи контент и кратко сформулируй ответ.
                 Используй инструменты когда это необходимо для ответа на вопрос пользователя.
                 Отвечай на русском языке.
                 
@@ -227,10 +248,36 @@ public class ToolCallingChatService {
         
         // Текущее сообщение пользователя
         messages.add(new UserMessage(userMessage));
-        
+
         return messages;
     }
-    
+
+    /**
+     * Загружает историю разговора из БД для контекста LLM.
+     * Берёт последние N сообщений (user/assistant), без только что сохранённого сообщения пользователя.
+     */
+    private List<Map<String, String>> loadHistoryFromDb(String conversationId) {
+        List<ChatMessage> recent = chatMessageRepository.findByConversationIdOrderByCreatedAtDesc(
+                conversationId, PageRequest.of(0, contextMessagesLimit + 1));
+        if (recent.isEmpty()) {
+            return List.of();
+        }
+        // Копируем в изменяемый список и разворачиваем в хронологический порядок (старые первые)
+        List<ChatMessage> ordered = new ArrayList<>(recent);
+        Collections.reverse(ordered);
+        List<ChatMessage> userOrAssistant = ordered.stream()
+                .filter(m -> m.getRole() == ChatMessage.MessageRole.USER || m.getRole() == ChatMessage.MessageRole.ASSISTANT)
+                .toList();
+        // Исключаем последнее сообщение — это текущее user message, оно передаётся отдельно в buildMessages
+        int take = Math.max(0, userOrAssistant.size() - 1);
+        return userOrAssistant.stream()
+                .limit(take)
+                .map(m -> Map.<String, String>of(
+                        "role", m.getRole().name().toLowerCase(Locale.ROOT),
+                        "content", m.getContent() != null ? m.getContent() : ""))
+                .collect(Collectors.toList());
+    }
+
     /**
      * Создает callbacks для всех доступных функций.
      */
@@ -321,6 +368,38 @@ public class ToolCallingChatService {
                 .description("Сгенерировать Sequence диаграмму и сценарий Use Case")
                 .inputType(ScenarioInput.class)
                 .build());
+
+        // Jira / Confluence tools
+        callbacks.add(FunctionCallback.builder()
+                .function("getJiraIssue", (IssueKeyInput input) ->
+                        jiraConfluenceTools.getJiraIssue(input.issueKey()))
+                .description("Получить задачу Jira по ключу (например TASK-12345): название, описание, статус, тип. Используй для начала цепочки по задаче.")
+                .inputType(IssueKeyInput.class)
+                .build());
+        callbacks.add(FunctionCallback.builder()
+                .function("getJiraRelatedIssues", (IssueKeyInput input) ->
+                        jiraConfluenceTools.getJiraRelatedIssues(input.issueKey()))
+                .description("Получить связанные задачи (issue links): блокирует, дубликаты, связанные. Возвращает ключи задач для последующего вызова getJiraIssue или getJiraRemoteLinks.")
+                .inputType(IssueKeyInput.class)
+                .build());
+        callbacks.add(FunctionCallback.builder()
+                .function("getJiraRemoteLinks", (IssueKeyInput input) ->
+                        jiraConfluenceTools.getJiraRemoteLinks(input.issueKey()))
+                .description("Получить удалённые ссылки задачи (в т.ч. ссылки на страницы Confluence). По id/ключу из результата вызови getConfluencePage.")
+                .inputType(IssueKeyInput.class)
+                .build());
+        callbacks.add(FunctionCallback.builder()
+                .function("getConfluencePage", (PageIdOrKeyInput input) ->
+                        jiraConfluenceTools.getConfluencePage(input.pageIdOrKey()))
+                .description("Получить контент страницы Confluence по id или ключу страницы (из ссылок задачи или поиска).")
+                .inputType(PageIdOrKeyInput.class)
+                .build());
+        callbacks.add(FunctionCallback.builder()
+                .function("searchConfluence", (SearchQueryInput input) ->
+                        jiraConfluenceTools.searchConfluence(input.query()))
+                .description("Поиск страниц в Confluence по запросу (CQL или текст). Результат используй для getConfluencePage по id/ключу.")
+                .inputType(SearchQueryInput.class)
+                .build());
         
         return callbacks;
     }
@@ -376,6 +455,11 @@ public class ToolCallingChatService {
                         (String) args.get("domainModel"),
                         (String) args.get("useCaseModel"),
                         (String) args.get("mvcModel"));
+                case "getJiraIssue" -> jiraConfluenceTools.getJiraIssue((String) args.get("issueKey"));
+                case "getJiraRelatedIssues" -> jiraConfluenceTools.getJiraRelatedIssues((String) args.get("issueKey"));
+                case "getJiraRemoteLinks" -> jiraConfluenceTools.getJiraRemoteLinks((String) args.get("issueKey"));
+                case "getConfluencePage" -> jiraConfluenceTools.getConfluencePage((String) args.get("pageIdOrKey"));
+                case "searchConfluence" -> jiraConfluenceTools.searchConfluence((String) args.get("query"));
                 default -> "Неизвестная функция: " + functionName;
             };
         } catch (Exception e) {
@@ -475,6 +559,9 @@ public class ToolCallingChatService {
     
     public record SessionIdInput(String sessionId) {}
     public record SessionArtifactInput(String sessionId, String artifactType) {}
+    public record IssueKeyInput(String issueKey) {}
+    public record PageIdOrKeyInput(String pageIdOrKey) {}
+    public record SearchQueryInput(String query) {}
     public record DomainModelInput(String narrative, String mode, String existingModel) {}
     public record NarrativeInput(String goal) {}
     public record ReviewInput(String target, String narrative, String domainModel) {}

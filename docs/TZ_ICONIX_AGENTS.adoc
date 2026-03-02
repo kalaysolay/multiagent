@@ -1,0 +1,126 @@
+= Техническое задание: Система ICONIX Agents (расширенная редакция)
+:toc: left
+:toclevels: 4
+:sectnums:
+:icons: font
+
+Документ предназначен для реализации системы «с нуля» или глубокого рефакторинга.
+Описаны: назначение, архитектура, полная схема БД, все экраны UI и сценарии,
+REST API и MCP с точными входами/выходами, безопасность, конфигурация.
+
+== 1. Назначение и границы системы
+
+=== 1.1. Цель
+
+Система обеспечивает автоматизированную генерацию проектной документации по методологии ICONIX:
+от формулировки цели пользователя до доменной модели (PlantUML), диаграмм Use Case и MVC,
+сценариев в AsciiDoc, с возможностью паузы на ревью и ручной правки артефактов.
+
+=== 1.2. Основные функции
+
+* Запуск полного workflow по одной цели (goal): генерация нарратива → доменная модель → ревью → доработка модели → пауза на ревью → Use Case → MVC → сценарии.
+* Сохранение состояния сессии (включая паузу) и возобновление с обновлёнными пользователем данными.
+* Независимый вызов каждого агента через REST и MCP-совместимый API с явной передачей входных данных.
+* Чат с LLM с вызовом инструментов (агенты, запросы к БД), контекстом из RAG и из сессий workflow.
+* Декомпозиция выбранных Use Case: генерация сценариев и MVC по каждому прецеденту.
+* Генерация «пакета» документации в файлы (domain.puml, use_case.puml, scn_*.adoc, mvc_*.puml и т.д.) и просмотр списка файлов и содержимого.
+* Векторное хранилище для RAG (поиск по документам) и управление документами (добавление, удаление, поиск) — только для администраторов.
+* Справочник промптов (код, название, текст, история изменений) — редактирование только для администраторов.
+* Аутентификация по JWT; роли: обычный пользователь и администратор.
+* Рендер PlantUML в PNG/SVG и валидация; рендер и валидация AsciiDoc.
+* Анализ Git-репозитория: неиспользуемые файлы и битые ссылки.
+
+=== 1.3. Термины
+
+|===
+| Термин | Определение
+| ICONIX | Методология объектно-ориентированного анализа и проектирования (нарратив → доменная модель → Use Case → Robustness/MVC → сценарии).
+| Workflow | Один прогон цепочки агентов по плану оркестратора.
+| Сессия (workflow session) | Экземпляр workflow: идентификатор requestId, статус, артефакты (narrative, plantuml, useCaseModel, mvcDiagram, scenario, issues и т.д.), логи, план.
+| Агент (Worker) | Один шаг обработки: narrative, model, review, usecase, mvc, scenario, userReview.
+| RAG | Retrieval-Augmented Generation — подмешивание релевантных фрагментов из векторного хранилища в запрос к LLM.
+| MCP | Model Context Protocol — способ предоставления инструментов (tools) внешним клиентам; в системе — REST-эмуляция (GET/POST /api/agents) и опционально JSON-RPC.
+|===
+
+== 2. Архитектура
+
+=== 2.1. Компоненты бэкенда
+
+* *OrchestratorService* — формирует план (narrative → model → review → model(refine) → userReview → usecase → mvc → scenario), выполняет шаги по порядку, сохраняет/загружает сессию из БД; при шаге userReview ставит статус PAUSED_FOR_REVIEW и возвращает ответ.
+* *WorkersRegistry* — хранит всех агентов по имени; используется оркестратором и MCP-сервером для вызова по имени.
+* *Агенты (Workers)* — narrative, model, review, usecase, mvc, scenario, userReview; каждый получает контекст (narrative, goal, state) и записывает результат в state (или бросает исключение для паузы).
+* *RagService* — интерфейс: retrieveContext(query, topK) → ContextResult(text, fragmentsCount, vectorStoreAvailable). Реализации: OpenAiRagService (OpenAI Vector Store), LocalRagService (локальная БД с pgvector).
+* *Промпты* — загрузка по коду из таблицы prompts (используется агентами и сервисами генерации).
+* *VectorizationService / LocalVectorStoreService* — добавление документов в векторное хранилище, поиск, список, удаление (для админки).
+
+=== 2.2. Потоки данных
+
+* *Запуск workflow:* Клиент отправляет POST /workflow/run с goal. Оркестратор создаёт сессию, формирует план, пошагово вызывает агентов; после каждого шага сохраняет context_state, logs, plan_json, current_step_index, status в workflow_sessions. При userReview сохраняет user_review_data и возвращает ответ с status PAUSED_FOR_REVIEW.
+* *Возобновление:* POST /workflow/resume с requestId и при необходимости narrative, domainModel. Оркестратор загружает сессию, подставляет обновлённые данные в контекст, продолжает с текущего шага.
+* *Вызов агента через REST/MCP:* POST /api/agents/{agentName} с телом — все нужные входы (goal, narrative, domainModel, useCaseModel, mvcModel по необходимости). Сервер маппит их в Worker.Context и state, вызывает worker.execute(), возвращает content (и при ошибке isError).
+
+include::db-schema.adoc[]
+
+include::ui-spec.adoc[]
+
+include::api-spec.adoc[]
+
+== 7. Безопасность
+
+* Выдача JWT при успешном POST /api/auth/login; проверка на каждом запросе к защищённым путям (кроме перечисленных ниже).
+* Публичные пути: /api/auth/login, /api/auth/me, статические ресурсы (/css, /js, /images, перечень HTML-страниц по усмотрению), GET /api/usecase/documentation/** (просмотр документации без авторизации).
+* При отсутствии или невалидном токене: для запросов к /api/*, /workflow/*, /render/* — 401 с телом { "error": "Unauthorized", "message": "Требуется аутентификация" }; для браузера при доступе к HTML можно редиректить на /login.html.
+* Роли: ROLE_USER (обычный доступ), ROLE_ADMIN (дополнительно: GET/PUT /api/prompts, все /api/vector-store/*, управление пользователями при наличии эндпоинтов). 403 с понятным сообщением при недостатке прав.
+* Пароли хранить только в виде хеша (BCrypt). CORS, CSRF — по политике проекта (в текущей реализации csrf отключён, CORS разрешён).
+
+== 8. Конфигурация и окружение
+
+* Обязательные переменные: ключ API LLM (например, spring.ai.openai.api-key или аналог для DeepSeek), параметры БД (url, username, password).
+* Опциональные: app.openai.vector-store-id, app.vector-store-provider (OPENAI | локальный), app.llm-provider (OPENAI | DEEPSEEK), JWT (секрет, время жизни), параметры DeepSeek (api-key, base-url, model). Размерность вектора (1536/768/1024) задаётся миграциями или конфигом провайдера эмбеддингов.
+
+== 9. Swagger / OpenAPI
+
+Рекомендуется описать все эндпоинты раздела 5 в OpenAPI 3.x: пути, методы, requestBody/parameters, responses (200, 400, 401, 403, 404, 500), схемы (WorkflowRequest, WorkflowResponse, ResumeRequest, ChatRequest/ChatResponse, DTO декомпозиции и документации, ответы агентов). Секция securitySchemes: Bearer JWT. Теги: Auth, Workflow, Agents, Chat, Use Case Decomposition, Documentation, Vector Store, Render, Prompts, Git Analyser.
+
+== 10. Нефункциональные требования
+
+* Логирование: входящие запросы (путь, метод, статус ответа), ошибки выполнения агентов и оркестратора, сбои аутентификации.
+* Обработка ошибок: не раскрывать внутренние детали в ответах клиенту; возвращать коды 4xx/5xx и структурированные сообщения (error, message).
+* Статус workflow: RUNNING → (при шаге userReview) PAUSED_FOR_REVIEW → (после resume) RUNNING → … → COMPLETED или FAILED.
+* Масштабируемость: приложение stateless; состояние в БД; при горизонтальном масштабировании — общая БД и при необходимости общее файловое хранилище для сгенерированной документации.
+
+== 11. Приложение: примеры запросов
+
+=== A. Запуск workflow
+
+[source,json]
+----
+POST /workflow/run
+{ "goal": "Автоматизация процесса KYC: заявка, сбор документов, проверка дублей, чек-листы, уведомления" }
+----
+
+=== B. Вызов агента usecase
+
+[source,json]
+----
+POST /api/agents/usecase
+{
+  "narrative": "Система управления заявками в интернет-магазине.",
+  "domainModel": "@startuml\nentity \"Заявка\" as Request\nentity \"Клиент\" as Customer\nCustomer ||--o{ Request\n@enduml"
+}
+----
+
+=== C. Возобновление workflow
+
+[source,json]
+----
+POST /workflow/resume
+{
+  "requestId": "550e8400-e29b-41d4-a716-446655440000",
+  "narrative": "Обновлённый нарратив после ревью.",
+  "domainModel": "@startuml\nentity \"Заявка\"\n...\n@enduml"
+}
+----
+
+---
+*Конец ТЗ.*

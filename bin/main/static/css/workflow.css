@@ -137,6 +137,68 @@ body {
     overflow: hidden;
 }
 
+/* Плашка пайплайна агентов над вкладками результатов */
+.pipeline-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    padding: 10px 16px;
+    background: #f1f3f5;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.8125rem;
+}
+
+.pipeline-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: #fff;
+    color: #495057;
+    border: 1px solid #dee2e6;
+}
+
+.pipeline-step--done {
+    background: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.pipeline-step--done .pipeline-step-icon {
+    color: #155724;
+}
+
+.pipeline-step--current {
+    background: #cce5ff;
+    border-color: #667eea;
+    color: #004085;
+    font-weight: 600;
+}
+
+.pipeline-step--current .pipeline-step-icon {
+    color: #004085;
+}
+
+.pipeline-step--pending {
+    color: #868e96;
+}
+
+.pipeline-step-icon {
+    font-weight: 700;
+}
+
+.pipeline-step-label {
+    white-space: nowrap;
+}
+
+.pipeline-arrow {
+    color: #adb5bd;
+    font-weight: 600;
+    margin: 0 2px;
+}
+
 .tabs {
     display: flex;
     background: #f8f9fa;
@@ -329,11 +391,33 @@ body {
     .workflow-container {
         grid-template-columns: 1fr;
     }
+    .decomposition-row {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Секция декомпозиции Use Case */
 .usecase-decomposition-section {
     margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.decomposition-header {
+    width: 100%;
+}
+
+.decomposition-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.decomposition-scenarios,
+.decomposition-mvc {
+    display: flex;
+    flex-direction: column;
 }
 
 .decomposition-container {
@@ -532,6 +616,54 @@ body {
     cursor: pointer;
 }
 
+/* Контейнер для декомпозированных MVC */
+.mvc-diagrams-container {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 600px;
+}
+
+.mvc-empty {
+    padding: 40px;
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+
+.mvc-item {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: #fdfdfd;
+}
+
+.mvc-item .scenario-header,
+.mvc-item .scenario-meta,
+.mvc-item .scenario-actions {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.mvc-item .scenario-actions {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.mvc-item .mvc-plantuml {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 8px;
+}
+
 .scenario-actions button:hover {
     background: #f0f0f0;
 }
@@ -680,3 +812,174 @@ body {
     color: #c33;
 }
 
+/* Блок кнопок «Создать документацию» и «Документация» */
+.documentation-actions {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.documentation-actions .btn {
+    flex: 0 1 auto;
+}
+
+/* Модальное окно генерации документации — светлое, единые шрифты и контраст */
+#documentationGenerateModal.documentation-modal.modal {
+    background-color: rgba(0, 0, 0, 0.35);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.documentation-modal .documentation-modal-content {
+    max-width: 440px;
+    width: 100%;
+    max-height: 90vh;
+    border-radius: 12px;
+    background: #fff;
+    color: #212529;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.documentation-modal .modal-header {
+    background: #fff;
+    color: #212529;
+    border-bottom: 1px solid #e9ecef;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.documentation-modal .modal-header h2 {
+    color: #212529;
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.documentation-modal .modal-close {
+    background: none;
+    border: none;
+    color: #495057;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.documentation-modal .modal-close:hover {
+    background: #f1f3f5;
+    color: #212529;
+}
+
+.documentation-modal .modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    background: #fff;
+    color: #212529;
+}
+
+.documentation-form {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.documentation-form label,
+.documentation-form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.9375rem;
+}
+
+.documentation-form input[type="text"],
+.documentation-form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    margin-bottom: 6px;
+    background: #fff;
+    color: #212529;
+    transition: border-color 0.2s;
+}
+
+.documentation-form input[type="text"]:focus,
+.documentation-form-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+.documentation-form input[type="text"]:disabled,
+.documentation-form-input:disabled {
+    background: #f8f9fa;
+    color: #6c757d;
+}
+
+.documentation-hint {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-bottom: 16px;
+    line-height: 1.4;
+}
+
+.documentation-error {
+    color: #c7254e;
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #fdf2f4;
+    border-radius: 6px;
+}
+
+.documentation-form .btn {
+    margin-top: 4px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    background: #5a67d8;
+    border: none;
+    color: #fff;
+}
+
+.documentation-form .btn:hover:not(:disabled) {
+    background: #4c51bf;
+}
+
+.documentation-git-placeholder {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.documentation-git-placeholder .documentation-form-label {
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.9375rem;
+}
+
+.documentation-git-placeholder .documentation-form-input {
+    margin-bottom: 12px;
+}
+
+.documentation-git-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.documentation-git-actions .btn {
+    font-size: 0.9375rem;
+}

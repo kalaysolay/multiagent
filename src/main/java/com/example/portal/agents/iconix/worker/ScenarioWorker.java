@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
@@ -48,11 +50,37 @@ public class ScenarioWorker implements Worker {
 
         String scenario = scenarioWriter.generateScenario(narrative, domainModel, useCaseModel, mvcModel, ragContext);
         
-        // Сохраняем сценарий в БД
-        scenarioService.saveScenario(ctx.requestId, scenario);
+        // Извлекаем первый Use Case из диаграммы для подписи сценария (избегаем "Без названия")
+        var firstUseCase = extractFirstUseCase(useCaseModel);
+        scenarioService.saveScenario(ctx.requestId, firstUseCase.alias(), firstUseCase.name(), scenario);
         
         ctx.state.put("scenario", scenario);
         ctx.log("scenario.generate: " + scenario.length() + " chars");
     }
+
+    /** Извлекает первый Use Case из PlantUML (usecase "Name" as alias). */
+    private static FirstUseCase extractFirstUseCase(String useCaseModel) {
+        if (useCaseModel == null || useCaseModel.isBlank()) {
+            return new FirstUseCase("general", "Сводный сценарий");
+        }
+        // usecase "Название" as alias или usecase "Название" as alias << base >>
+        Pattern p = Pattern.compile("usecase\\s+\"([^\"]+)\"\\s+as\\s+(\\w+)", Pattern.CASE_INSENSITIVE);
+        Matcher m = p.matcher(useCaseModel);
+        if (m.find()) {
+            return new FirstUseCase(m.group(2), m.group(1).trim());
+        }
+        // Без "as alias"
+        Pattern p2 = Pattern.compile("usecase\\s+\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
+        Matcher m2 = p2.matcher(useCaseModel);
+        if (m2.find()) {
+            String name = m2.group(1).trim();
+            String alias = name.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+            if (alias.isEmpty()) alias = "general";
+            return new FirstUseCase(alias, name);
+        }
+        return new FirstUseCase("general", "Сводный сценарий");
+    }
+
+    private static record FirstUseCase(String alias, String name) {}
 }
 

@@ -1,0 +1,137 @@
+// REST API и MCP — детальная спецификация для ТЗ ICONIX Agents
+// Включается в TZ_ICONIX_AGENTS.adoc
+
+== 5. REST API (детально)
+
+Базовый URL: корень приложения. Content-Type: application/json; charset=UTF-8. Для защищённых методов: Authorization: Bearer <JWT>.
+
+=== 5.1. Аутентификация
+
+* POST /api/auth/login  
+  Request: { "username": string, "password": string }.  
+  Response 200: { "token": string, "username": string, "isAdmin": boolean }.  
+  Response 401: { "error": string }.
+
+* GET /api/auth/me  
+  Headers: Authorization.  
+  Response 200: { "username": string, "isAdmin": boolean, "enabled": boolean }.  
+  Response 401: { "error": string }.
+
+=== 5.2. Workflow
+
+* POST /workflow/run  
+  Request: { "requestId"?: string (UUID), "goal": string }.  
+  Response 200: WorkflowResponse (requestId, orchestrator: { analysis, plan: [{ tool, args }] }, artifacts: object, logs: string[]).  
+  При паузе: artifacts дополняются _status: "PAUSED_FOR_REVIEW", _reviewData при необходимости.
+
+* POST /workflow/resume  
+  Request: { "requestId": string, "narrative"?: string, "domainModel"?: string }.  
+  Response 200: WorkflowResponse.  
+  400: requestId обязателен. 404: сессия не найдена.
+
+* GET /workflow/sessions  
+  Response 200: [ { requestId, status, author, createdAt, updatedAt } ].
+
+* GET /workflow/session/{requestId}  
+  Response 200: WorkflowResponse. 404: сессия не найдена.
+
+* GET /workflow/ — редирект на /index.html.
+
+=== 5.3. Агенты (REST / MCP)
+
+* GET /api/agents  
+  Response 200: { "tools": [ { "name", "description", "inputSchema" } ] }. inputSchema — JSON Schema (type object, properties, required).
+
+* POST /api/agents/{agentName}  
+  agentName: narrative | model | review | usecase | mvc | scenario | userReview.  
+  Request body: объект с полями по агенту (см. раздел 6).  
+  Response 200: { "content": [ { "type": "text", "text": string } ] } или при ошибке { "isError": true, "content": [ { "type": "text", "text": "Ошибка: ..." } ] }.
+
+* POST /api/agents/jsonrpc  
+  Body: JSON-RPC 2.0. Методы: tools/list (result — список tools), tools/call (params: name, arguments; result — результат вызова).  
+  Response: JSON-RPC 2.0 response (result или error).
+
+=== 5.4. Чат
+
+* POST /api/chat  
+  Request: { "message": string, "history"?: [{ "role", "content" }], "workflowSessionId"?: string, "conversationId"?: string }.  
+  Response 200: { "response": string, "toolCalls": array, "diagrams": array, "conversationId": string }.
+
+* GET /api/chat/history?conversationId=&limit=20  
+  Response 200: { "messages": [ { role, content, timestamp, toolCalls? } ] }.
+
+* GET /api/chat/conversations?limit=10  
+  Response 200: список разговоров.
+
+=== 5.5. Use Case: декомпозиция и документация
+
+* POST /api/usecase/decomposition  
+  Request: { "requestId": string, "useCases": [ { "alias": string, "name": string } ] }.  
+  Response 200: { "results": [ { useCaseAlias, useCaseName, scenario, success, error } ] }.
+
+* GET /api/usecase/decomposition/{requestId}  
+  Response 200: { "scenarios": ScenarioDto[], "mvcDiagrams": MvcDiagramDto[] }.  
+  ScenarioDto: id, useCaseAlias, useCaseName, scenarioContent, createdAt, updatedAt.  
+  MvcDiagramDto: id, useCaseAlias, useCaseName, mvcPlantuml, createdAt, updatedAt.
+
+* GET /api/usecase/decomposition/{requestId}/{useCaseAlias}  
+  Response 200: { "scenarios": ScenarioDto[] }.
+
+* POST /api/usecase/documentation/generate  
+  Request: { "requestId": string, "folderName": string }.  
+  Response 200: { "folderPath", "createdFiles", "updated" }. 400/409/422 при ошибках.
+
+* GET /api/usecase/documentation/{requestId}/exists  
+  Response 200: { "exists": boolean }.
+
+* GET /api/usecase/documentation/{requestId}/files  
+  Response 200: { "files": [ { name, path?, size? } ] }.
+
+* GET /api/usecase/documentation/{requestId}/files/{fileName}  
+  Produces: text/plain; charset=UTF-8. Response 200: тело файла.
+
+=== 5.6. Векторное хранилище (все методы требуют роль администратора)
+
+* GET /api/vector-store/documents?page=0&size=20  
+  Response 200: { "documents": [...], "total": number }.
+
+* POST /api/vector-store/documents — body { "content", "metadata"? }.  
+* POST /api/vector-store/documents/batch — body { "documents": string[] }.  
+* POST /api/vector-store/documents/upload — multipart, ключ files.  
+* POST /api/vector-store/search — body { "query", "topK"? }. Response: { "results", "count" }.  
+* DELETE /api/vector-store/documents/{id}.
+
+=== 5.7. Рендер и валидация
+
+* POST /render/png, POST /render/svg — body { "plantuml": string }. Response: изображение или ошибка.  
+* POST /render/validate — body с кодом PlantUML. Response: { "valid": boolean, "message"?: string }.  
+* POST /render/adoc — body { "content": string }. Response: HTML или объект с полем html.  
+* POST /render/adoc/validate — body { "content": string }. Response: { "valid": boolean, "errors"?: array }.
+
+=== 5.8. Промпты
+
+* GET /api/prompts — 200: массив промптов (админ). 403 для не-админа.  
+* GET /api/prompts/{code} — 200: объект промпта. 404 если не найден.  
+* PUT /api/prompts/{code} — body { "content": string } (админ). 200: обновлённый промпт.  
+* GET /api/prompts/{code}/history — 200: история изменений.
+
+=== 5.9. Git Analyser
+
+* POST /api/git-analyser/analyze  
+  Request: { "repositoryUrl": string, "branch": string, "accessToken"?: string }.  
+  Response 200: { "requestId", "repositoryUrl", "branch", "result": { "unusedFiles", "brokenReferences", "totalFiles", "analyzedFiles" } }.  
+  unusedFiles: [{ filePath, reason, fileSize }]. brokenReferences: [{ sourceFile, referencedPath, lineNumber, referenceType } ].
+
+== 6. Агенты: входы и выходы (для реализации и MCP)
+
+* narrative: входы — goal (обязательно), task/description опционально. Выход в state — narrativeOverride (текст нарратива). Ответ MCP — content с этим текстом.
+* model: входы — narrative (обязательно), mode (generate | refine), при refine — domainModel (plantuml). Выход — state.plantuml (PlantUML строка).
+* review: входы — target (model | narrative), narrative, при target=model — domainModel. Выход — state.issues или state.narrativeIssues (массив { id, title, severity, suggestion }).
+* usecase: входы — narrative (опционально), domainModel (обязательно). Выход — state.useCaseModel (PlantUML).
+* mvc: входы — narrative (опционально), domainModel, useCaseModel (обязательно). Выход — state.mvcDiagram (PlantUML).
+* scenario: входы — narrative (опционально), domainModel, useCaseModel, mvcModel (обязательно). Выход — state.scenario (AsciiDoc); при необходимости сохранение в use_case_scenarios по requestId.
+* userReview: читает из контекста narrative, plantuml, issues. Бросает исключение с сохранением сессии в PAUSED_FOR_REVIEW; ответ при прямом вызове — ошибка или специальный статус.
+
+Маппинг имён в MCP: domainModel → plantuml в state; useCaseModel → useCaseModel; mvcModel → mvcDiagram.
+
+Схема Issue (для review): id (string), title (string), severity (string), suggestion (string).

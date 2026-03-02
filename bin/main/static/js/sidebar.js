@@ -231,7 +231,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <img src="/images/analyzer-logo.png" alt="ANALYZER Logo" class="logo">
-                <h2>Портал аналитика</h2>
+                <h2>RUBICON</h2>
             </div>
             
             <nav class="sidebar-menu">

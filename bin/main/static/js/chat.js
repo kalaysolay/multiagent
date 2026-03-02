@@ -1,11 +1,17 @@
 let chatHistory = [];
 let currentConversationId = null;
 
-// Инициализация
+// Инициализация: при наличии conversationId загружаем его историю, иначе — новый разговор (пустой чат)
 document.addEventListener('DOMContentLoaded', function() {
     initChatModeSwitcher();
     initChatInput();
-    loadChatHistory();
+    const urlParams = new URLSearchParams(window.location.search);
+    const conversationId = urlParams.get('conversationId') || localStorage.getItem('currentConversationId') || null;
+    if (conversationId) {
+        loadChatHistory(conversationId);
+    } else {
+        startNewConversation();
+    }
 });
 
 function initChatModeSwitcher() {
@@ -83,9 +89,10 @@ async function sendMessage() {
         // Убираем индикатор загрузки
         if (loadingDiv) loadingDiv.remove();
         
-        // Сохраняем conversation ID
+        // Сохраняем conversation ID (для контекста и для загрузки при следующем открытии страницы)
         if (data.conversationId) {
             currentConversationId = data.conversationId;
+            localStorage.setItem('currentConversationId', data.conversationId);
         }
         
         // Добавляем ответ ассистента с диаграммами и tool calls
@@ -120,45 +127,51 @@ function showLoadingIndicator() {
     return loadingDiv;
 }
 
-async function loadChatHistory() {
+/**
+ * Загружает историю разговора по conversationId и отображает её.
+ * Вызывать при открытии чата с conversationId (URL/localStorage) или при выборе разговора из списка.
+ * @param {string} conversationId - ID разговора (обязателен для загрузки)
+ */
+async function loadChatHistory(conversationId) {
+    if (!conversationId) return;
     try {
-        const response = await fetch('/api/chat/history?limit=20');
-        
+        const response = await fetch(`/api/chat/history?conversationId=${encodeURIComponent(conversationId)}&limit=20`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
         const data = await response.json();
-        
+        // Привязываем историю к текущему разговору
+        currentConversationId = conversationId;
+        chatHistory = [];
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.innerHTML = '';
         if (data.messages && data.messages.length > 0) {
-            // Очищаем контейнер сообщений
-            const messagesContainer = document.getElementById('chatMessages');
-            messagesContainer.innerHTML = '';
-            
-            // Добавляем сообщения из истории
             data.messages.forEach(msg => {
-                // Пропускаем TOOL сообщения в UI (они технические)
                 if (msg.role === 'tool') return;
-                
                 addMessageFromHistory(msg.role, msg.content, msg.timestamp, msg.toolCalls);
-                // Обновляем историю для контекста
                 if (msg.role === 'user' || msg.role === 'assistant') {
                     chatHistory.push({ role: msg.role, content: msg.content });
                 }
-                
-                // Сохраняем conversation ID
-                if (msg.conversationId) {
-                    currentConversationId = msg.conversationId;
-                }
             });
-            
-            // Прокручиваем вниз
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } catch (error) {
         console.error('Error loading chat history:', error);
-        // Не показываем ошибку пользователю, просто не загружаем историю
+        currentConversationId = conversationId;
+        chatHistory = [];
     }
+}
+
+/**
+ * Переключиться на другой разговор (для UI списка разговоров).
+ * Загружает историю выбранного разговора и обновляет экран.
+ */
+function selectConversation(conversationId) {
+    if (!conversationId) {
+        startNewConversation();
+        return;
+    }
+    loadChatHistory(conversationId);
 }
 
 function addMessage(role, content) {
@@ -326,6 +339,7 @@ function showDiagram(plantUmlCode, title) {
 function startNewConversation() {
     currentConversationId = null;
     chatHistory = [];
+    localStorage.removeItem('currentConversationId');
     const messagesContainer = document.getElementById('chatMessages');
     messagesContainer.innerHTML = `
         <div class="system-message">
