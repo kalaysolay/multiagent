@@ -4,6 +4,8 @@ const POLL_INTERVAL_MS = 2000;
 let currentRequestId = null;
 let isPausedForReview = false;
 let pollTimerId = null;
+/** После 202 (run/resume) опрашиваем ещё до 60 с, чтобы дождаться RUNNING → COMPLETED. 0 = не в окне. */
+let pollingAfter202Until = 0;
 
 // Инициализация
 document.addEventListener('DOMContentLoaded', function() {
@@ -113,6 +115,9 @@ async function loadSessionFromUrl() {
 
             // Плашка пайплайна агентов
             renderPipelineStrip(data);
+
+            // Динамическое обновление: опрос состояния, пока workflow в RUNNING
+            startPolling(requestId);
 
         } catch (error) {
             console.error('Error loading session:', error);
@@ -315,7 +320,7 @@ async function sendRequest() {
             url.searchParams.set('requestId', currentRequestId);
             window.history.replaceState({}, '', url);
             showStatus('Запрос принят, выполнение в фоне…', 'info');
-            startPolling(currentRequestId);
+            startPolling(currentRequestId, true);
         } else {
             const data = body;
             if (data.requestId) handleResponse(data);
@@ -368,7 +373,7 @@ async function sendResume() {
         const body = await response.json();
         if (response.status === 202) {
             showStatus('Обновления приняты, выполнение в фоне…', 'info');
-            startPolling(currentRequestId);
+            startPolling(currentRequestId, true);
         } else {
             handleResponse(body);
             showStatus('Обновления отправлены успешно', 'success');
@@ -395,16 +400,26 @@ async function pollOnce(requestId) {
         const response = await fetch(`${API_BASE}/session/${requestId}`);
         if (!response.ok) return;
         const data = await response.json();
+        // Ожидаем ответ сессии: { requestId, artifacts, ... }. Игнорируем чужой формат (напр. decomposition)
+        if (!data || !data.requestId || !data.artifacts) {
+            console.warn('Poll got non-session response, retrying');
+            pollTimerId = setTimeout(() => pollOnce(requestId), POLL_INTERVAL_MS);
+            return;
+        }
         window.__lastSessionData = data;
         handleResponse(data);
-        const status = data?.artifacts?._status;
-        if (status === 'RUNNING') {
-            pollTimerId = setTimeout(() => pollOnce(requestId), POLL_INTERVAL_MS);
-        } else {
+        const status = data.artifacts._status;
+        const in202Window = pollingAfter202Until > 0 && Date.now() < pollingAfter202Until;
+        const shouldStop = status === 'COMPLETED' || status === 'FAILED' ||
+            (status === 'PAUSED_FOR_REVIEW' && (!in202Window || pollingAfter202Until === 0));
+        if (shouldStop) {
             stopPolling();
+            pollingAfter202Until = 0;
             if (status === 'COMPLETED' || status === 'PAUSED_FOR_REVIEW') {
                 if (requestId) loadDecomposedArtifacts(requestId);
             }
+        } else {
+            pollTimerId = setTimeout(() => pollOnce(requestId), POLL_INTERVAL_MS);
         }
     } catch (e) {
         console.warn('Poll error:', e);
@@ -412,8 +427,11 @@ async function pollOnce(requestId) {
     }
 }
 
-function startPolling(requestId) {
+function startPolling(requestId, after202) {
     stopPolling();
+    if (after202) {
+        pollingAfter202Until = Date.now() + 60000;
+    }
     pollOnce(requestId);
 }
 
@@ -426,9 +444,10 @@ function handleResponse(data) {
     
     // Проверяем статус
     const status = data.artifacts?._status;
+    const in202Window = pollingAfter202Until > 0 && Date.now() < pollingAfter202Until;
     isPausedForReview = status === 'PAUSED_FOR_REVIEW';
     
-    if (isPausedForReview) {
+    if (isPausedForReview && !in202Window) {
         showStatus('Требуется ваше подтверждение. Отредактируйте поля и нажмите "Отправить обновления"', 'info');
         document.getElementById('resumeButton').style.display = 'block';
         
@@ -442,10 +461,17 @@ function handleResponse(data) {
                 document.getElementById('domainOutput').value = cleanText(reviewData.domainModel);
             }
         }
+    } else if (isPausedForReview && in202Window) {
+        document.getElementById('resumeButton').style.display = 'none';
+        showStatus('Обновления приняты, выполнение в фоне…', 'info');
     } else {
         document.getElementById('resumeButton').style.display = 'none';
         if (status === 'COMPLETED') {
             showStatus('Workflow завершен успешно', 'success');
+        } else if (status === 'RUNNING') {
+            showStatus('Workflow выполняется...', 'info');
+        } else if (status === 'FAILED') {
+            showStatus('Workflow завершился с ошибкой', 'error');
         }
     }
     

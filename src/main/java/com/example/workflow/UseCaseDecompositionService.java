@@ -59,29 +59,23 @@ public class UseCaseDecompositionService {
             String mvcModel = artifacts.get("mvcDiagram") != null ? String.valueOf(artifacts.get("mvcDiagram")) : "";
             
             // Проверяем наличие необходимых данных
-            if (domainModel == null || domainModel.isBlank()) {
+            if (domainModel.isBlank()) {
                 throw new IllegalStateException("Domain model is required for Use Case decomposition");
             }
-            if (useCaseModel == null || useCaseModel.isBlank()) {
+            if (useCaseModel.isBlank()) {
                 throw new IllegalStateException("Use Case model is required for Use Case decomposition");
-            }
-            if (mvcModel == null || mvcModel.isBlank()) {
-                throw new IllegalStateException("MVC model is required for Use Case decomposition");
             }
             
             // Фильтруем модели, оставляя только релевантные части для конкретного Use Case
-            // Это помогает уменьшить размер контекста и избежать превышения лимита токенов
             String filteredUseCaseModel = plantUmlFilter.filterUseCaseModel(
                     useCaseModel, useCaseAlias, useCaseName);
-            String filteredMvcModel = plantUmlFilter.filterMvcModel(mvcModel, useCaseAlias);
+            String filteredMvcModel = mvcModel.isBlank() ? "" : plantUmlFilter.filterMvcModel(mvcModel, useCaseAlias);
             
-            // Если модели все еще слишком большие, обрезаем их (fallback)
-            // Максимальные размеры для каждой модели (примерно 3000 токенов на модель)
-            int maxModelLength = 8000; // ~3000 токенов
+            int maxModelLength = 8000;
             if (filteredUseCaseModel.length() > maxModelLength) {
                 filteredUseCaseModel = plantUmlFilter.truncatePlantUml(filteredUseCaseModel, maxModelLength);
             }
-            if (filteredMvcModel.length() > maxModelLength) {
+            if (!filteredMvcModel.isBlank() && filteredMvcModel.length() > maxModelLength) {
                 filteredMvcModel = plantUmlFilter.truncatePlantUml(filteredMvcModel, maxModelLength);
             }
             if (domainModel.length() > maxModelLength) {

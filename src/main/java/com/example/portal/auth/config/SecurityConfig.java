@@ -89,7 +89,8 @@ public class SecurityConfig {
                 .requestMatchers("/index.html", "/", "/render.html", "/chat.html", "/git-analyser.html", 
                                 "/iconix-agent-list.html", "/iconix-agent-detail.html",
                                 "/iconix-documentation.html",
-                                "/prompts.html", "/vector-store.html").permitAll()
+                                "/prompts.html", "/vector-store.html",
+                                "/jira-agent-list.html", "/jira-agent-task-info.html").permitAll()
                 // Просмотр документации (список файлов и содержимое) без авторизации, чтобы страница не редиректила на логин
                 .requestMatchers(HttpMethod.GET, "/api/usecase/documentation/**").permitAll()
                 .anyRequest().authenticated()

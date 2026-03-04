@@ -90,6 +90,10 @@ app:
   # Чат: макс. число сообщений истории (user/assistant) в контексте LLM
   chat:
     context-messages-limit: ${CHAT_CONTEXT_MESSAGES_LIMIT:30}
+  # Jira: временная интеграция (base-path без завершающего слэша, Bearer token из env)
+  jira:
+    base-path: ${JIRA_BASE_PATH:}
+    bearer-token: ${JIRA_BEARER_TOKEN:}
 
 # JWT конфигурация
 jwt:

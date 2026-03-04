@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -40,7 +41,8 @@ public class CorporateApiConfig {
                     "app.corporate.api-key and app.corporate.base-url must be set when using CORPORATE LLM provider");
         }
         log.info("Configuring Corporate ChatModel: baseUrl={}, model={}", baseUrl, model);
-        OpenAiApi api = new OpenAiApi(baseUrl, apiKey, RestClient.builder(), WebClient.builder(), null);
+        RestClient.Builder restBuilder = RestClient.builder().defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE);
+        OpenAiApi api = new OpenAiApi(baseUrl, apiKey, restBuilder, WebClient.builder(), null);
         return new OpenAiChatModel(api, OpenAiChatOptions.builder()
                 .model(model)
                 .temperature(1.0)
@@ -68,7 +70,8 @@ public class CorporateApiConfig {
                     "app.corporate.api-key and app.corporate.base-url must be set when using CORPORATE embedding provider");
         }
         log.info("Configuring Corporate EmbeddingModel: baseUrl={}, model={}", baseUrl, model);
-        OpenAiApi api = new OpenAiApi(baseUrl, apiKey, RestClient.builder(), WebClient.builder(), null);
+        RestClient.Builder restBuilder = RestClient.builder().defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE);
+        OpenAiApi api = new OpenAiApi(baseUrl, apiKey, restBuilder, WebClient.builder(), null);
         return new OpenAiEmbeddingModel(api, MetadataMode.NONE,
                 OpenAiEmbeddingOptions.builder().model(model).build());
     }

@@ -36,13 +36,15 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
     
     /**
      * Получить уникальные conversation IDs, отсортированные по последней активности.
+     * GROUP BY + ORDER BY MAX(created_at) совместим с PostgreSQL (в отличие от SELECT DISTINCT + ORDER BY агрегата).
      */
-    @Query("""
-            SELECT DISTINCT m.conversationId FROM ChatMessage m 
-            WHERE m.conversationId IS NOT NULL 
-            ORDER BY MAX(m.createdAt) DESC 
+    @Query(value = """
+            SELECT cm.conversation_id FROM chat_messages cm
+            WHERE cm.conversation_id IS NOT NULL
+            GROUP BY cm.conversation_id
+            ORDER BY MAX(cm.created_at) DESC
             LIMIT :limit
-            """)
+            """, nativeQuery = true)
     List<String> findDistinctConversationIds(@Param("limit") int limit);
     
     /**

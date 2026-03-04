@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Информация по задаче - Jira Agent</title>
+    <link rel="stylesheet" href="/css/portal.css">
+    <link rel="stylesheet" href="/css/jira-agent.css">
+    <script src="/js/auth.js"></script>
+    <script src="/js/sidebar.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div id="sidebar-container"></div>
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Информация по задаче</h1>
+                <p>Введите ключ задачи и получите сводку от LLM по данным из Jira</p>
+                <a href="/jira-agent-list.html" class="back-link">← К списку агентов</a>
+            </div>
+            <div class="jira-agent-task-form">
+                <div class="form-group">
+                    <label for="issueKeyInput">Номер задачи</label>
+                    <input type="text" id="issueKeyInput" placeholder="PROJ-12345" autocomplete="off" />
+                </div>
+                <button id="analyzeButton" class="btn btn-primary">
+                    <span class="btn-text">Анализ</span>
+                    <span class="btn-loader" style="display: none;">
+                        <span class="spinner"></span>
+                        Анализ...
+                    </span>
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Результат</label>
+                <div id="analysisResult" class="jira-agent-result placeholder">Здесь появится результат анализа</div>
+            </div>
+        </main>
+    </div>
+    <script src="/js/jira-agent-task-info.js"></script>
+</body>
+</html>

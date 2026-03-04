@@ -6,67 +6,81 @@
     <title>Chat with LLM</title>
     <link rel="stylesheet" href="/css/portal.css">
     <link rel="stylesheet" href="/css/chat.css">
+    <!-- Markdown + Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/plaintext.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/asciidoc.min.js"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/sidebar.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <!-- Боковое меню (генерируется динамически через sidebar.js) -->
         <div id="sidebar-container"></div>
-        
-        <!-- Основной контент -->
-        <main class="main-content chat-content">
-            <div class="content-header">
-                <h1>Chat with LLM</h1>
-                <p>Чат с языковой моделью</p>
-            </div>
-            
-            <!-- Вариант 1: Iframe для LibreChat (если запущен отдельно) -->
-            <div id="librechat-container" style="display: none;">
-                <iframe 
-                    id="librechat-iframe"
-                    src="http://localhost:3080" 
-                    style="width: 100%; height: calc(100vh - 200px); border: none; border-radius: 12px;"
-                    allow="clipboard-read; clipboard-write"
-                ></iframe>
-                <div class="chat-info">
-                    <p>Если LibreChat не загружается, убедитесь, что он запущен на порту 3080</p>
+
+        <main class="main-content chat-page">
+            <!-- Панель бесед (слева) -->
+            <aside class="conversations-panel" id="conversationsPanel">
+                <div class="conversations-header">
+                    <h3>Беседы</h3>
+                    <button id="newConversationBtn" class="btn-icon" title="Новая беседа">+</button>
                 </div>
-            </div>
-            
-            <!-- Вариант 2: Простой чат-интерфейс (через Spring AI) -->
-            <div id="simple-chat-container">
+                <div class="conversations-list" id="conversationsList">
+                    <!-- Заполняется из JS -->
+                </div>
+            </aside>
+
+            <!-- Основной чат -->
+            <section class="chat-main">
+                <div class="chat-header">
+                    <button class="btn-icon toggle-conversations" id="toggleConversations" title="Список бесед">&#9776;</button>
+                    <h2>Chat with LLM</h2>
+                </div>
+
                 <div class="chat-messages" id="chatMessages">
                     <div class="message system-message">
-                        <p>Добро пожаловать! Начните диалог, отправив сообщение ниже.</p>
+                        <div class="message-body">
+                            <p>Добро пожаловать! Вы можете:</p>
+                            <ul>
+                                <li>Спросить о статусе workflow сессий</li>
+                                <li>Попросить сгенерировать доменную модель по нарративу</li>
+                                <li>Запросить список доступных инструментов</li>
+                                <li>Задать вопросы по ICONIX методологии</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="chat-input-container">
-                    <textarea 
-                        id="chatInput" 
-                        placeholder="Введите ваше сообщение..."
-                        rows="3"
-                    ></textarea>
-                    <button id="sendChatButton" class="btn-send">
-                        <span>Отправить</span>
-                    </button>
+
+                <div class="chat-input-area">
+                    <div class="chat-input-wrapper">
+                        <textarea id="chatInput" placeholder="Введите сообщение... (Shift+Enter — новая строка)" rows="1"></textarea>
+                        <button id="sendChatButton" class="btn-send" title="Отправить (Enter)">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Переключатель режимов -->
-            <div class="chat-mode-switcher">
-                <label>
-                    <input type="radio" name="chatMode" value="simple" checked> Простой чат (через Spring AI)
-                </label>
-                <label>
-                    <input type="radio" name="chatMode" value="librechat"> LibreChat (отдельное приложение)
-                </label>
-            </div>
+            </section>
         </main>
     </div>
-    
+
+    <!-- Модальное окно диаграмм (для PlantUML рендера из чата) -->
+    <div id="chatDiagramModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="chatDiagramTitle">Диаграмма</h2>
+                <button class="modal-close" id="closeChatDiagramModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="chatDiagramContainer"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/chat.js"></script>
 </body>
 </html>
-

@@ -72,8 +72,8 @@
                 },
                 {
                     text: 'Jira Agent',
-                    href: '#',
-                    activePaths: [] // Пока не реализовано
+                    href: '/jira-agent-list.html',
+                    activePaths: ['/jira-agent-list.html', '/jira-agent-task-info.html']
                 },
                 {
                     text: 'Git Analyser Agent',
