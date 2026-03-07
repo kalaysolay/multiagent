@@ -41,6 +41,16 @@ public class JiraConfluenceApiStub {
             public String searchConfluence(String query) {
                 return "Jira/Confluence не настроены. Реализуйте searchConfluence в вашем JiraConfluenceApi.";
             }
+
+            @Override
+            public String searchByJql(String jql, int limit) {
+                return "Jira/Confluence не настроены. Реализуйте searchByJql в вашем JiraConfluenceApi.";
+            }
+
+            @Override
+            public String getJiraTasksInCurrentSprint() {
+                return "Jira/Confluence не настроены. Реализуйте getJiraTasksInCurrentSprint в вашем JiraConfluenceApi.";
+            }
         };
     }
 }

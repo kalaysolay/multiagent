@@ -400,7 +400,21 @@ public class ToolCallingChatService {
                 .description("Поиск страниц в Confluence по запросу (CQL или текст). Результат используй для getConfluencePage по id/ключу.")
                 .inputType(SearchQueryInput.class)
                 .build());
-        
+        callbacks.add(FunctionCallback.builder()
+                .function("searchByJql", (JqlSearchInput input) -> {
+                    int limit = input.limit() != null && input.limit() > 0 ? input.limit() : 50;
+                    return jiraConfluenceTools.searchByJql(input.jql(), limit);
+                })
+                .description("Поиск задач Jira по JQL. Сценарии: мои задачи (assignee = currentUser()), капасити спринта, риски. Параметры: jql — строка JQL, limit — макс. число результатов (по умолчанию 50).")
+                .inputType(JqlSearchInput.class)
+                .build());
+        callbacks.add(FunctionCallback.builder()
+                .function("getJiraTasksInCurrentSprint", (SprintTasksInput input) ->
+                        jiraConfluenceTools.getJiraTasksInCurrentSprint())
+                .description("Список задач текущего спринта по проекту из конфига. Для капасити — по полям задач посчитай сумму (например story points).")
+                .inputType(SprintTasksInput.class)
+                .build());
+
         return callbacks;
     }
     
@@ -460,6 +474,17 @@ public class ToolCallingChatService {
                 case "getJiraRemoteLinks" -> jiraConfluenceTools.getJiraRemoteLinks((String) args.get("issueKey"));
                 case "getConfluencePage" -> jiraConfluenceTools.getConfluencePage((String) args.get("pageIdOrKey"));
                 case "searchConfluence" -> jiraConfluenceTools.searchConfluence((String) args.get("query"));
+                case "searchByJql" -> {
+                    String jql = (String) args.get("jql");
+                    Object lim = args.get("limit");
+                    int limit = 50;
+                    if (lim instanceof Number) {
+                        limit = ((Number) lim).intValue();
+                    }
+                    if (limit <= 0) limit = 50;
+                    yield jiraConfluenceTools.searchByJql(jql != null ? jql : "", limit);
+                }
+                case "getJiraTasksInCurrentSprint" -> jiraConfluenceTools.getJiraTasksInCurrentSprint();
                 default -> "Неизвестная функция: " + functionName;
             };
         } catch (Exception e) {
@@ -562,6 +587,8 @@ public class ToolCallingChatService {
     public record IssueKeyInput(String issueKey) {}
     public record PageIdOrKeyInput(String pageIdOrKey) {}
     public record SearchQueryInput(String query) {}
+    public record JqlSearchInput(String jql, Integer limit) {}
+    public record SprintTasksInput() {}
     public record DomainModelInput(String narrative, String mode, String existingModel) {}
     public record NarrativeInput(String goal) {}
     public record ReviewInput(String target, String narrative, String domainModel) {}

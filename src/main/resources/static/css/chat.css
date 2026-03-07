@@ -630,9 +630,7 @@
 .chat-messages::-webkit-scrollbar-track,
 .conversations-list::-webkit-scrollbar-track {
     background: transparent;
-}
-
-.chat-messages::-webkit-scrollbar-thumb,
+}.chat-messages::-webkit-scrollbar-thumb,
 .conversations-list::-webkit-scrollbar-thumb {
     background: #c0c0c0;
     border-radius: 3px;

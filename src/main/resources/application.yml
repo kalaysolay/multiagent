@@ -94,6 +94,12 @@ app:
   jira:
     base-path: ${JIRA_BASE_PATH:}
     bearer-token: ${JIRA_BEARER_TOKEN:}
+    project-code: ${JIRA_PROJECT_CODE:}
+  # Confluence: base-url, Basic Auth (login + password, независимо от Jira)
+  confluence:
+    base-url: ${CONFLUENCE_BASE_URL:}
+    login: ${CONFLUENCE_LOGIN:}
+    password: ${CONFLUENCE_PASSWORD:}
 
 # JWT конфигурация
 jwt:

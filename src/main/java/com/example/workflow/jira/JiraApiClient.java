@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -56,6 +57,41 @@ public class JiraApiClient {
             return Optional.empty();
         } catch (Exception e) {
             log.error("Error fetching Jira issue {}", issueIdOrKey, e);
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Поиск задач по JQL. GET /rest/api/2/search?jql=...&maxResults=...&startAt=0.
+     * При пустом basePath или jql возвращает empty.
+     */
+    public Optional<SearchResult> searchByJQL(String jql, int limit) {
+        if (basePath.isEmpty()) {
+            log.debug("Jira base-path not set, skipping searchByJQL");
+            return Optional.empty();
+        }
+        if (jql == null || jql.isBlank()) {
+            return Optional.empty();
+        }
+        int maxResults = limit <= 0 ? 50 : limit;
+        try {
+            SearchResult result = webClient
+                    .get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/rest/api/2/search")
+                            .queryParam("jql", jql.trim())
+                            .queryParam("maxResults", maxResults)
+                            .queryParam("startAt", 0)
+                            .build())
+                    .retrieve()
+                    .bodyToMono(SearchResult.class)
+                    .block();
+            return Optional.ofNullable(result);
+        } catch (WebClientResponseException e) {
+            log.warn("Jira API error for search: {} {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return Optional.empty();
+        } catch (Exception e) {
+            log.error("Error searching Jira by JQL", e);
             return Optional.empty();
         }
     }

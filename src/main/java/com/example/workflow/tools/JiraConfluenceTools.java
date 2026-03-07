@@ -123,6 +123,44 @@ public class JiraConfluenceTools {
     }
 
     /**
+     * Поиск задач по JQL (например assignee = currentUser(), или project = X AND Sprint in openSprints()).
+     */
+    public String searchByJql(String jql, int limit) {
+        if (jql == null || jql.isBlank()) {
+            return "Ошибка: укажите JQL-запрос (jql)";
+        }
+        if (limit <= 0) {
+            limit = 50;
+        }
+        if (jiraConfluenceApi == null) {
+            return "Интеграция с Jira не настроена. Подключите JiraConfluenceApi bean.";
+        }
+        try {
+            log.info("Tool call: searchByJql(jql={}, limit={})", jql, limit);
+            return jiraConfluenceApi.searchByJql(jql.trim(), limit);
+        } catch (Exception e) {
+            log.error("Error in searchByJql", e);
+            return "Ошибка при поиске по JQL: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Задачи текущего спринта по проекту из конфига (app.jira.project-code).
+     */
+    public String getJiraTasksInCurrentSprint() {
+        if (jiraConfluenceApi == null) {
+            return "Интеграция с Jira не настроена. Подключите JiraConfluenceApi bean.";
+        }
+        try {
+            log.info("Tool call: getJiraTasksInCurrentSprint()");
+            return jiraConfluenceApi.getJiraTasksInCurrentSprint();
+        } catch (Exception e) {
+            log.error("Error in getJiraTasksInCurrentSprint", e);
+            return "Ошибка при получении задач спринта: " + e.getMessage();
+        }
+    }
+
+    /**
      * API вашего стартера Jira/Confluence. Реализуйте этот интерфейс и зарегистрируйте бин.
      */
     public interface JiraConfluenceApi {
@@ -140,5 +178,11 @@ public class JiraConfluenceTools {
 
         /** Поиск в Confluence (CQL или текст). */
         String searchConfluence(String query);
+
+        /** Поиск задач по JQL. Возврат: JSON или текст с issues, total и т.д. */
+        String searchByJql(String jql, int limit);
+
+        /** Задачи текущего спринта по проекту из конфига (project-code). */
+        String getJiraTasksInCurrentSprint();
     }
 }

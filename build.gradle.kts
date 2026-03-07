@@ -72,7 +72,8 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
-    
+    testImplementation("org.springframework.boot:spring-boot-starter-webflux")
+
     // Testcontainers для интеграционных тестов (PostgreSQL + pgvector)
     testImplementation("org.testcontainers:testcontainers:1.19.8")
     testImplementation("org.testcontainers:postgresql:1.19.8")
